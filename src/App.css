@@ -1,38 +1,130 @@
-.App {
-  text-align: center;
+/* General App Container */
+.app-container {
+  display: flex;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+/* Sidebar Drawer */
+.sidebar-drawer {
+  width: 230px;
+  flex-shrink: 0;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
-}
-
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.sidebar-paper {
+  width: 230px;
+  box-sizing: border-box;
+  background-color: #dcdcc6;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  height: 100vh;
+}
+
+/* Sidebar Toolbar */
+.sidebar-toolbar {
+  display: flex;
   justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  align-items: center;
+  padding: 16px 0;
 }
 
-.App-link {
-  color: #61dafb;
+/* Sidebar Logo */
+.sidebar-logo {
+  height: 80px;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
+/* Sidebar SearchBar */
+.sidebar-searchbar {
+  margin: 16px;
+}
+
+/* Sidebar List */
+.sidebar-list {
+  flex-grow: 1;
+}
+
+/* Sidebar ListItem */
+.sidebar-listitem {
+  padding-left: 24px;
+}
+
+/* Sidebar ListIcon */
+.sidebar-listicon {
+  min-width: 40px;
+  color: #000;
+}
+
+/* Sidebar Logout Section */
+.sidebar-logout {
+  text-align: center;
+  margin: 16px;
+}
+
+/* Logout Button */
+.logout-button {
+  background-color: #a2b99a;
+  color: #fff;
+  text-transform: none;
+  border-radius: 8px;
+  width: 80%;
+  transition: background-color 0.3s;
+}
+
+.logout-button:hover {
+  background-color: #8fa784;
+}
+
+/* Main Content */
+.main-content {
+  flex-grow: 1;
+  padding: 24px;
+  background-color: #f6f6f6;
+  min-height: 100vh;
+}
+
+.main-content-mobile {
+  padding: 16px;
+}
+
+/* Mobile AppBar */
+.mobile-appbar {
+  background-color: #dcdcc6;
+  z-index: 1201; /* Ensure it sits above the drawer */
+}
+
+/* Mobile Toolbar */
+.mobile-toolbar {
+  display: flex;
+  align-items: center;
+  background-color: #dcdcc6;
+  width: 100%;
+}
+
+/* Menu Button */
+.menu-button {
+  margin-right: 16px;
+  color: #000;
+}
+
+/* Mobile SearchBar */
+.mobile-searchbar {
+  flex-grow: 1;
+}
+
+/* Mobile Toolbar Spacing */
+.mobile-toolbar-spacing {
+  height: 64px; /* Match AppBar height */
+}
+
+/* Responsive Drawer */
+@media (min-width: 960px) {
+  /* Hide hamburger menu on desktop */
+  .hamburger-menu {
+    display: none;
   }
-  to {
-    transform: rotate(360deg);
+}
+
+@media (max-width: 959px) {
+  /* Hide sidebar on mobile/tablet */
+  .sidebar-drawer {
+    display: none;
   }
 }

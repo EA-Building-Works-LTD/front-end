@@ -14,46 +14,31 @@ import { Routes, Route, Navigate, Link } from "react-router-dom";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
+import LogoutIcon from "@mui/icons-material/Logout";
 import { jwtDecode } from "jwt-decode";
 import { ThemeProvider } from "@mui/material/styles";
-import "./index.css";
+import "./App.css";
 import theme from "./theme";
 
 // Import components
 import Leads from "./components/Leads";
 import Builders from "./components/Builders";
 import Login from "./components/Login";
-import DashboardPage from "./components/Dashboard"; // <-- Import your new dashboard component
+import DashboardPage from "./components/Dashboard";
 import SearchBar from "./components/SearchBar";
 import EarningsPage from "./components/EarningsPage";
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
 
-const drawerWidth = 230;
-
 function App() {
   const [user, setUser] = useState(null);
-  const [authChecked, setAuthChecked] = useState(false); // new
-
-    // Define invoices and builders
-    const [invoices, setInvoices] = useState([
-      { id: 1, builderName: "H.Ali", date: "2025-01-01", status: "Done", amount: 1000 },
-      { id: 2, builderName: "H.Ali", date: "2025-01-05", status: "Pending", amount: 500 },
-      { id: 3, builderName: "N.Hussain", date: "2025-01-02", status: "Done", amount: 1360 },
-      { id: 4, builderName: "M.Ahmed", date: "2025-01-03", status: "Done", amount: 255 },
-    ]);
-    const [builders, setBuilders] = useState([
-      { id: 1, name: "H.Ali", image: "https://via.placeholder.com/40" },
-      { id: 2, name: "N.Hussain", image: "https://via.placeholder.com/40" },
-      { id: 3, name: "M.Ahmed", image: "https://via.placeholder.com/40" },
-    ]);
+  const [authChecked, setAuthChecked] = useState(false);
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
 
     if (!token || !role) {
-      // If no token, we’re done checking
       setAuthChecked(true);
       return;
     }
@@ -65,7 +50,6 @@ function App() {
         localStorage.removeItem("role");
         setUser(null);
       } else {
-        // Token valid
         setUser({ role });
       }
     } catch (error) {
@@ -73,7 +57,7 @@ function App() {
       localStorage.removeItem("role");
       setUser(null);
     }
-    // Mark that we've checked
+
     setAuthChecked(true);
   }, []);
 
@@ -83,7 +67,6 @@ function App() {
     setUser(null);
   };
 
-  // If still checking localStorage, show a loading indicator (or blank screen)
   if (!authChecked) {
     return <div>Loading...</div>;
   }
@@ -92,69 +75,72 @@ function App() {
     <ThemeProvider theme={theme}>
       <UserRoleProvider role={user?.role || "guest"}>
         <LeadsProvider user={user}>
-          <Box sx={{ display: "flex" }}>
+          <Box className="app-container">
             <CssBaseline />
 
             {/* Sidebar Navigation */}
             {user && (
               <Drawer
                 variant="permanent"
-                sx={{
-                  width: drawerWidth,
-                  flexShrink: 0,
-                  [`& .MuiDrawer-paper`]: {
-                    width: drawerWidth,
-                    boxSizing: "border-box",
-                    backgroundColor: "#DCDCC6",
-                  },
+                className="sidebar-drawer"
+                classes={{
+                  paper: "sidebar-paper",
                 }}
               >
-                <Toolbar>
+                <Toolbar className="sidebar-toolbar">
                   <Box
                     component="img"
                     src="/EABuildingWorksLTD.png"
                     alt="EA Building Works Ltd Logo"
-                    sx={{
-                      height: 200,
-                      mx: "auto",
-                    }}
+                    className="sidebar-logo"
                   />
                 </Toolbar>
-                <SearchBar />
-                <List>
-                  {/* Dashboard Button -> now links to /dashboard */}
-                  <ListItemButton component={Link} to="/dashboard">
-                    <ListItemIcon>
+                <SearchBar className="sidebar-searchbar" />
+                <List className="sidebar-list">
+                  <ListItemButton
+                    component={Link}
+                    to="/dashboard"
+                    className="sidebar-listitem"
+                  >
+                    <ListItemIcon className="sidebar-listicon">
                       <DashboardIcon />
                     </ListItemIcon>
                     <ListItemText primary="Dashboard" />
                   </ListItemButton>
 
-                  {/* Admin-Specific Links */}
                   {user.role === "admin" && (
-                    <ListItemButton component={Link} to="/leads">
-                      <ListItemIcon>
+                    <ListItemButton
+                      component={Link}
+                      to="/leads"
+                      className="sidebar-listitem"
+                    >
+                      <ListItemIcon className="sidebar-listicon">
                         <PeopleIcon />
                       </ListItemIcon>
                       <ListItemText primary="Leads" />
                     </ListItemButton>
                   )}
 
-                  {/* Builder-Specific Links */}
                   {(user.role === "admin" || user.role === "builder") && (
-                    <ListItemButton component={Link} to="/builders">
-                      <ListItemIcon>
+                    <ListItemButton
+                      component={Link}
+                      to="/builders"
+                      className="sidebar-listitem"
+                    >
+                      <ListItemIcon className="sidebar-listicon">
                         <BuildIcon />
                       </ListItemIcon>
                       <ListItemText primary="Builders" />
                     </ListItemButton>
                   )}
                 </List>
-                <Box sx={{ textAlign: "center", mt: 2 }}>
+                <Box className="sidebar-logout">
                   <Button
                     variant="contained"
                     color="secondary"
                     onClick={handleLogout}
+                    startIcon={<LogoutIcon />}
+                    className="logout-button"
                   >
                     Logout
                   </Button>
@@ -163,36 +149,23 @@ function App() {
             )}
 
             {/* Main Content */}
-            <Box
-              component="main"
-              sx={{ flexGrow: 1, bgcolor: "background.default", p: 3 }}
-            >
-              <Toolbar />
+            <Box component="main" className="main-content">
               <Routes>
-                {/* If user is null after we’ve checked, go to login */}
                 {!user ? (
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 ) : (
                   <>
-                    {/* New route for /dashboard => Your custom DashboardPage */}
                     <Route path="/dashboard" element={<DashboardPage />} />
-
                     <Route
                       path="/dashboard/earnings"
-                      element={<EarningsPage invoices={invoices} builders={builders} />}
+                      element={<EarningsPage invoices={[]} builders={[]} />}
                     />
-
-                    {/* Admin Routes */}
                     {user.role === "admin" && (
                       <Route path="/leads" element={<Leads />} />
                     )}
-
-                    {/* Builder Routes */}
                     {(user.role === "admin" || user.role === "builder") && (
                       <Route path="/builders" element={<Builders />} />
                     )}
-
-                    {/* Redirect user with role to their default page */}
                     <Route
                       path="*"
                       element={
@@ -205,8 +178,6 @@ function App() {
                     />
                   </>
                 )}
-
-                {/* Login Route */}
                 <Route path="/login" element={<Login setUser={setUser} />} />
               </Routes>
             </Box>

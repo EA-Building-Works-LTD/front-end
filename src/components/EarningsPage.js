@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Box, Typography, Card, CardContent, Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer } from "@mui/material";
+import { Box, Typography, Table, TableHead, TableRow, TableCell, TableBody, Paper, TableContainer } from "@mui/material";
 
 export default function EarningsPage({ invoices, builders }) {
   const [builderEarnings, setBuilderEarnings] = useState(null);

@@ -11,6 +11,8 @@ import {
   MenuItem,
   Toolbar,
   TablePagination,
+  CircularProgress,
+  Button,
 } from "@mui/material";
 import { Email, Phone, MoreVert } from "@mui/icons-material";
 import axios from "axios";
@@ -24,16 +26,38 @@ const Leads = () => {
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [expandedCards, setExpandedCards] = useState({}); // Keep track of expanded cards
 
   useEffect(() => {
     const fetchGoogleLeads = async () => {
+      const token = localStorage.getItem("token");
       try {
-        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/google-leads`);
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL}/api/google-leads`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
 
         setLeads(response.data || []);
         setFilteredLeads(response.data || []);
       } catch (error) {
-        console.error("Error fetching leads:", error);
+        if (error.response && error.response.status === 403) {
+          setError("Access forbidden. Please check your permissions.");
+        } else {
+          setError(
+            `Failed to fetch leads. Status: ${
+              error.response ? error.response.status : error.message
+            }`
+          );
+        }
+      } finally {
+        setLoading(false);
       }
     };
 
@@ -94,6 +118,36 @@ const Leads = () => {
     setPage(0);
   };
 
+  const toggleExpand = (index) => {
+    setExpandedCards((prev) => ({
+      ...prev,
+      [index]: !prev[index], // Toggle the expanded state for the card
+    }));
+  };
+
+  const truncateText = (text, limit) => {
+    if (text.length > limit) {
+      return text.substring(0, limit) + "...";
+    }
+    return text;
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" mt={5}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+
+  if (error) {
+    return (
+      <Box display="flex" justifyContent="center" mt={5}>
+        <Typography color="error">{error}</Typography>
+      </Box>
+    );
+  }
+
   return (
     <Box>
       <Typography variant="h4" gutterBottom>
@@ -141,9 +195,36 @@ const Leads = () => {
             )}
           </Select>
         </FormControl>
+        <FormControl sx={{ minWidth: 150, ml: 2 }}>
+          <InputLabel>Budget</InputLabel>
+          <Select
+            value={filters.budget}
+            onChange={(e) =>
+              setFilters({ ...filters, budget: e.target.value })
+            }
+          >
+            {Array.from(new Set(leads.map((lead) => lead.budget || "N/A"))).map(
+              (budget, index) => (
+                <MenuItem key={`budget-${index}`} value={budget}>
+                  {budget}
+                </MenuItem>
+              )
+            )}
+          </Select>
+        </FormControl>
+        <FormControl sx={{ minWidth: 150, ml: 2 }}>
+          <InputLabel>Sort Order</InputLabel>
+          <Select
+            value={sortOrder}
+            onChange={(e) => setSortOrder(e.target.value)}
+          >
+            <MenuItem value="asc">Oldest First</MenuItem>
+            <MenuItem value="desc">Newest First</MenuItem>
+          </Select>
+        </FormControl>
       </Toolbar>
 
-      
+      {/* Pagination */}
       <TablePagination
         rowsPerPageOptions={[10, 25, 50]}
         component="div"
@@ -171,12 +252,6 @@ const Leads = () => {
                 <Box className="lead-info">
                   <Typography variant="h6" className="lead-name">
                     {lead.fullName || "N/A"}
-                  </Typography>
-                  <Typography variant="body2" className="lead-email">
-                    {lead.email || "N/A"}
-                  </Typography>
-                  <Typography variant="body2" className="lead-phone">
-                    {lead.phoneNumber || "N/A"}
                   </Typography>
                 </Box>
 
@@ -230,7 +305,19 @@ const Leads = () => {
                 </Box>
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Extra Details</Typography>
-                  <Typography variant="body2">{lead.details || "N/A"}</Typography>
+                  <Typography variant="body2">
+                    {expandedCards[index]
+                      ? lead.details || "N/A"
+                      : truncateText(lead.details || "N/A", 50)}
+                  </Typography>
+                  {lead.details && lead.details.length > 50 && (
+                    <Button
+                      size="small"
+                      onClick={() => toggleExpand(index)}
+                    >
+                      {expandedCards[index] ? "Show Less" : "Show More"}
+                    </Button>
+                  )}
                 </Box>
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Budget</Typography>

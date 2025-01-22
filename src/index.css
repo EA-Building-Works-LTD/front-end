@@ -1,4 +1,57 @@
 /* index.css */
 body, html {
   font-family: 'Encode Sans', sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Ensure body content fits within the viewport */
+body {
+  overflow-x: hidden;
+}
+
+/* Default global styles */
+h1, h2, h3, h4, h5, h6 {
+  margin: 0;
+  padding: 0;
+}
+
+/* Responsive styles for mobile (max-width: 600px) */
+@media (max-width: 600px) {
+  /* Reduce font sizes globally for mobile */
+  h1 {
+    font-size: 24px;
+  }
+  h2 {
+    font-size: 20px;
+  }
+  h3 {
+    font-size: 18px;
+  }
+  h4, h5, h6, p {
+    font-size: 16px;
+  }
+
+  /* Adjust padding and margins */
+  body, html {
+    padding: 8px;
+    margin: 0;
+  }
+
+  /* Ensure elements scale within the viewport */
+  img, video, iframe {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Global utility classes */
+  .container {
+    padding: 8px; /* Reduce padding for mobile */
+  }
+
+  .btn {
+    font-size: 14px; /* Ensure buttons fit within the screen */
+    padding: 10px 16px; /* Make buttons touch-friendly */
+  }
 }

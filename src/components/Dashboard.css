@@ -1,0 +1,382 @@
+/* Dashboard.css */
+
+/* General Container */
+.dashboard-container {
+    padding: 16px;
+    min-height: 100vh;
+    background-color: #f6f6f6;
+  }
+  
+  /* Gradient Box for Balances */
+  .gradient-box {
+    background: linear-gradient(135deg, #7d9b76 0%, #aec4a5 100%);
+    border-radius: 16px; /* Assuming theme.shape.borderRadius * 2 is 16px */
+    color: #fff;
+    padding: 24px; /* Assuming theme.spacing(3) is 24px */
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  /* Balances Row */
+  .balances-row {
+    padding-bottom: 16px;
+  }
+  
+  /* Balance Titles and Amounts */
+  .balance-title {
+    font-weight: bold;
+    font-size: 1.25rem; /* Equivalent to h5 */
+  }
+  
+  .balance-amount {
+    margin-top: 8px;
+    font-size: 2rem; /* Equivalent to h3 */
+  }
+  
+  /* Transactions Card */
+  .transactions-card {
+    border-radius: 12px;
+    margin-bottom: 16px;
+  }
+  
+  /* Transactions Header */
+  .transactions-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  
+  /* Transactions Title */
+  .transactions-title {
+    font-weight: bold;
+  }
+  
+  /* Action Dropdown */
+  .action-dropdown {
+    width: 150px;
+  }
+  
+  /* Transactions Caption */
+  .transactions-caption {
+    color: rgba(0, 0, 0, 0.54); /* text.secondary */
+  }
+  
+  /* Transactions Table Container */
+  .transactions-table-container {
+    max-height: 320px;
+    margin-top: 8px;
+    border-radius: 8px;
+    overflow-y: auto;
+  }
+  
+  /* Transactions Table Head */
+  .transactions-table-head {
+    background-color: #dcdcc6;
+  }
+  
+  /* Table Cells */
+  .table-cell {
+    padding: 8px; /* sx={{ px: 1 }} equivalent */
+  }
+  
+  /* Checkbox Cell */
+  .table-cell-checkbox {
+    padding: 8px 4px;
+  }
+  
+  /* Select All Checkbox */
+  .select-all-checkbox {
+    transform: scale(0.5);
+    margin-left: -6px; /* ml: -1.5 equivalent (assuming 4px per unit) */
+  }
+  
+  /* Row Checkbox */
+  .row-checkbox {
+    transform: scale(0.5);
+    margin-left: -6px;
+  }
+  
+  /* Transaction Row */
+  .transaction-row {}
+  
+  /* Status-based Styling */
+  .status-pending {
+    color: #f57c00; /* Example color for Pending */
+  }
+  
+  .status-done {
+    color: #388e3c; /* Example color for Done */
+  }
+  
+  /* UK Builders Card */
+  .uk-builders-card {
+    border-radius: 12px;
+    background-color: #dcdcc6;
+  }
+  
+  /* Section Header */
+  .section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  /* Section Title */
+  .section-title {
+    font-weight: bold;
+  }
+  
+  /* UK Builders Add New Section */
+  .uk-builders-add-new {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-top: 16px;
+    gap: 16px;
+  }
+  
+  /* Add New Builder */
+  .add-new-builder {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    cursor: pointer;
+    user-select: none;
+  }
+  
+  /* Add New Icon */
+  .add-new-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: #e0e0e0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+  }
+  
+  /* Add New Text */
+  .add-new-text {
+    margin-top: 4px;
+    text-align: center;
+  }
+  
+  /* Builders Scroller */
+  .builders-scroller {
+    display: flex;
+    gap: 16px;
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    user-select: none;
+    scrollbar-width: none;
+    cursor: grab;
+    width: 100%;
+  }
+  
+  .builders-scroller::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .builders-scroller.active-scroll {
+    cursor: grabbing;
+  }
+  
+  /* Builder Item */
+  .builder-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    border: 2px solid transparent;
+    border-radius: 50%;
+    padding: 8px;
+    cursor: pointer;
+    transition: border 0.3s;
+  }
+  
+  .builder-item.selected-builder {
+    border: 2px solid #5065f6;
+  }
+  
+  /* Builder Avatar */
+  .builder-avatar {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 4px;
+  }
+  
+  /* Builder Name */
+  .builder-name {
+    font-size: 0.75rem;
+  }
+  
+  /* UK Builders Actions */
+  .uk-builders-actions {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    margin-top: 16px;
+  }
+  
+  /* Amount Input Container */
+  .amount-input-container {
+    display: flex;
+    flex-direction: column;
+  }
+  
+  /* Amount Label */
+  .amount-label {
+    margin-bottom: 4px;
+  }
+  
+  /* Amount Input */
+  .amount-input {
+    width: 120px;
+  }
+  
+  /* Request Button */
+  .request-button {
+    border-radius: 8px;
+    background-color: #e0e0e0;
+    color: #000;
+    transition: background-color 0.3s;
+  }
+  
+  .request-button.disabled-button {
+    background-color: #ccc;
+    color: #000;
+  }
+  
+  .request-button:not(.disabled-button):hover {
+    background-color: #d0d0d0;
+  }
+  
+  /* Top Builders Card */
+  .top-builders-card {
+    border-radius: 12px;
+    background-color: #dcdcc6;
+    height: 100%;
+  }
+  
+  /* Top Builders List */
+  .top-builders-list {
+    display: flex;
+    justify-content: left;
+    gap: 24px;
+    margin-top: 24px;
+  }
+  
+  /* Top Builder Item */
+  .top-builder-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    width: 70px;
+  }
+  
+  /* Top Builder Avatar */
+  .top-builder-avatar {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 4px;
+    background-color: #bdbdbd;
+  }
+  
+  /* Top Builder Name */
+  .top-builder-name {
+    font-weight: bold;
+    font-size: 0.8rem;
+  }
+  
+  /* Top Builder Amount */
+  .top-builder-amount {
+    font-weight: bold;
+    font-size: 0.8rem;
+  }
+  
+  /* Top Builders Button Container */
+  .top-builders-button-container {
+    margin-top: 16px;
+    display: flex;
+    justify-content: left;
+  }
+  
+  /* View More Button */
+  .view-more-button {
+    background-color: #a2b99a;
+    color: #fff;
+    text-transform: none;
+    border-radius: 8px;
+    margin-top: 9.2px; /* 2.3 * 4px assuming 1 unit = 4px */
+    transition: background-color 0.3s;
+  }
+  
+  .view-more-button:hover {
+    background-color: #8fa784;
+  }
+  
+  /* Add Builder Dialog */
+  .add-builder-dialog .MuiPaper-root {
+    border-radius: 12px;
+    padding: 16px;
+  }
+  
+  /* Dialog Title */
+  .dialog-title {
+    text-align: center;
+    font-weight: bold;
+  }
+  
+  /* Dialog Logo */
+  .dialog-logo {
+    width: 280px;
+    margin-bottom: 8px;
+  }
+  
+  /* Dialog Subtitle */
+  .dialog-subtitle {
+    margin-top: 8px;
+  }
+  
+  /* Dialog Content */
+  .dialog-content {
+    text-align: center;
+  }
+  
+  /* Builder Name Input */
+  .builder-name-input {
+    margin-top: 16px;
+  }
+  
+  /* Dialog Actions */
+  .dialog-actions {
+    justify-content: center;
+  }
+  
+  /* Cancel Button */
+  .cancel-button {
+    border-color: #dcdcc6;
+    color: #000;
+    transition: background-color 0.3s;
+  }
+  
+  .cancel-button:hover {
+    background-color: #f0f0f0;
+  }
+  
+  /* Add Button */
+  .add-button {
+    margin-left: 8px;
+    background-color: #dcdcc6;
+    color: #000;
+    transition: background-color 0.3s;
+  }
+  
+  .add-button:hover {
+    background-color: #c5c0ad;
+  }
+  

@@ -1,3 +1,5 @@
+// Dashboard.js
+
 import React, { useRef, useState, useEffect } from "react";
 import {
   Box,
@@ -25,9 +27,9 @@ import {
   TableContainer,
   Paper,
 } from "@mui/material";
-import { styled, textAlign } from "@mui/system";
 import { Link } from "react-router-dom";
 import jsPDF from "jspdf";
+import "./Dashboard.css";
 
 // Utility for formatting the date to DD/MM/YYYY
 function formatUKDate(dateObj) {
@@ -36,14 +38,6 @@ function formatUKDate(dateObj) {
   const y = dateObj.getFullYear();
   return `${d}/${m}/${y}`;
 }
-
-// Gradient box for balances
-const GradientBox = styled(Box)(({ theme }) => ({
-  background: "linear-gradient(135deg, #7D9B76 0%, #AEC4A5 100%)",
-  borderRadius: theme.shape.borderRadius * 2,
-  color: "#fff",
-  padding: theme.spacing(3),
-}));
 
 export default function Dashboard() {
   // Builders
@@ -119,7 +113,7 @@ export default function Dashboard() {
     return { ...builder, totalPaid };
   });
 
-  // Sort builders by totalPaid descending and get the top 3
+  // Sort builders by totalPaid descending and get the top 5
   const topBuilders = [...builderPayments]
     .sort((a, b) => b.totalPaid - a.totalPaid)
     .slice(0, 5);
@@ -295,44 +289,42 @@ export default function Dashboard() {
   };
 
   return (
-    <Box sx={{ p: 2, minHeight: "100vh", backgroundColor: "#F6F6F6" }}>
+    <Box className="dashboard-container">
       {/* Row 1: Balances */}
-      <Grid container spacing={2} sx={{ paddingBottom: 2 }}>
+      <Grid container spacing={2} className="balances-row">
         <Grid item xs={12} md={6}>
-          <GradientBox>
-            <Typography variant="h5" fontWeight="bold">
+          <div className="gradient-box">
+            <Typography variant="h5" className="balance-title">
               Total Balance
             </Typography>
-            <Typography variant="h3" sx={{ mt: 1 }}>
+            <Typography variant="h3" className="balance-amount">
               £{doneBalance.toFixed(2)}
             </Typography>
-          </GradientBox>
+          </div>
         </Grid>
         <Grid item xs={12} md={6}>
-          <GradientBox>
-            <Typography variant="h5" fontWeight="bold">
+          <div className="gradient-box">
+            <Typography variant="h5" className="balance-title">
               Pending Balance
             </Typography>
-            <Typography variant="h3" sx={{ mt: 1 }}>
+            <Typography variant="h3" className="balance-amount">
               £{pendingBalance.toFixed(2)}
             </Typography>
-          </GradientBox>
+          </div>
         </Grid>
       </Grid>
       {/* Row 2: Transactions */}
       <Grid container spacing={2}>
         <Grid item xs={12}>
-          <Card sx={{ borderRadius: 3, mb: 2 }}>
+          <Card className="transactions-card">
             <CardContent>
-              <Box
-                sx={{ display: "flex", justifyContent: "space-between", mb: 1 }}
-              >
-                <Typography variant="h6" fontWeight="bold">
+              <Box className="transactions-header">
+                <Typography variant="h6" className="transactions-title">
                   Payment History
                 </Typography>
 
                 {/* The single drop-down to apply to selected rows */}
-                <FormControl size="small" sx={{ width: 150 }}>
+                <FormControl size="small" className="action-dropdown">
                   <InputLabel>Action</InputLabel>
                   <Select
                     value={tableAction}
@@ -346,27 +338,19 @@ export default function Dashboard() {
                 </FormControl>
               </Box>
 
-              <Typography variant="caption" color="text.secondary">
+              <Typography variant="caption" className="transactions-caption">
                 Your invoice history
               </Typography>
 
               {/* Table container (scroll for ~7 transactions) */}
-              <TableContainer
-                component={Paper}
-                sx={{
-                  maxHeight: 320,
-                  mt: 1,
-                  borderRadius: 2,
-                  overflowY: "auto",
-                }}
-              >
+              <TableContainer component={Paper} className="transactions-table-container">
                 <Table size="small" stickyHeader>
                   <TableHead>
-                    <TableRow sx={{ backgroundColor: "#DCDCC6" }}>
+                    <TableRow className="transactions-table-head">
                       {/* SELECT ALL CHECKBOX in header */}
-                      <TableCell sx={{ px: 1 }}>
+                      <TableCell className="table-cell-checkbox">
                         <Checkbox
-                          sx={{ transform: "scale(0.5)", ml: -1.5 }}
+                          className="select-all-checkbox"
                           indeterminate={
                             selectedRows.length > 0 &&
                             selectedRows.length < invoices.length
@@ -386,18 +370,10 @@ export default function Dashboard() {
                           }}
                         />
                       </TableCell>
-                      <TableCell sx={{ px: 1 }}>
-                        <strong>Builder</strong>
-                      </TableCell>
-                      <TableCell sx={{ px: 1 }}>
-                        <strong>Date</strong>
-                      </TableCell>
-                      <TableCell sx={{ px: 1 }}>
-                        <strong>Status</strong>
-                      </TableCell>
-                      <TableCell sx={{ px: 1 }}>
-                        <strong>Amount</strong>
-                      </TableCell>
+                      <TableCell className="table-cell">Builder</TableCell>
+                      <TableCell className="table-cell">Date</TableCell>
+                      <TableCell className="table-cell">Status</TableCell>
+                      <TableCell className="table-cell">Amount</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
@@ -406,25 +382,24 @@ export default function Dashboard() {
                       const isChecked = selectedRows.includes(inv.id);
 
                       return (
-                        <TableRow key={inv.id} hover>
-                          <TableCell sx={{ px: 1 }}>
+                        <TableRow key={inv.id} hover className="transaction-row">
+                          <TableCell className="table-cell-checkbox">
                             <Checkbox
-                              sx={{
-                                transform: "scale(0.5)",
-                                ml: -1.5,
-                              }}
+                              className="row-checkbox"
                               checked={isChecked}
                               onChange={(e) =>
                                 handleRowCheckbox(inv.id, e.target.checked)
                               }
                             />
                           </TableCell>
-                          <TableCell sx={{ px: 1 }}>
+                          <TableCell className="table-cell">
                             {inv.builderName}
                           </TableCell>
-                          <TableCell sx={{ px: 1 }}>{inv.date}</TableCell>
-                          <TableCell sx={{ px: 1 }}>{inv.status}</TableCell>
-                          <TableCell sx={{ px: 1 }}>
+                          <TableCell className="table-cell">{inv.date}</TableCell>
+                          <TableCell className={`table-cell status-${inv.status.toLowerCase()}`}>
+                            {inv.status}
+                          </TableCell>
+                          <TableCell className="table-cell">
                             +£{Number(inv.amount).toFixed(2)}
                           </TableCell>
                         </TableRow>
@@ -438,63 +413,26 @@ export default function Dashboard() {
         </Grid>
       </Grid>
 
-      {/* Row 3: UK Builders (50% width) */}
+      {/* Row 3: UK Builders and Top Builders */}
       <Grid container spacing={2}>
+        {/* UK Builders Section */}
         <Grid item xs={12} md={6}>
-          <Card
-            sx={{
-              borderRadius: 3,
-              backgroundColor: "#DCDCC6",
-            }}
-          >
+          <Card className="uk-builders-card">
             <CardContent>
-              <Box sx={{ display: "flex", justifyContent: "space-between" }}>
-                <Typography variant="h6" fontWeight="bold">
+              <Box className="section-header">
+                <Typography variant="h6" className="section-title">
                   UK Builders
                 </Typography>
               </Box>
 
               {/* Center-aligned "Add new" */}
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "center",
-                  alignItems: "center",
-                  mt: 2,
-                  gap: 2,
-                }}
-              >
+              <Box className="uk-builders-add-new">
                 <Box
-                  sx={{
-                    display: "flex",
-                    flexDirection: "column",
-                    alignItems: "center",
-                    cursor: "pointer",
-                    userSelect: "none",
-                  }}
+                  className="add-new-builder"
                   onClick={handleAddNewClick}
                 >
-                  <Box
-                    sx={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: "50%",
-                      bgcolor: "#E0E0E0",
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      fontWeight: "bold",
-                    }}
-                  >
-                    +
-                  </Box>
-                  <Typography
-                    variant="caption"
-                    sx={{
-                      mt: 0.5,
-                      textAlign: "center",
-                    }}
-                  >
+                  <Box className="add-new-icon">+</Box>
+                  <Typography variant="caption" className="add-new-text">
                     Add new
                   </Typography>
                 </Box>
@@ -502,17 +440,7 @@ export default function Dashboard() {
                 {/* SCROLLER for builders */}
                 <Box
                   ref={scrollRef}
-                  sx={{
-                    display: "flex",
-                    gap: 2,
-                    flexWrap: "nowrap",
-                    overflowX: "auto",
-                    userSelect: "none",
-                    "&::-webkit-scrollbar": { display: "none" },
-                    scrollbarWidth: "none",
-                    cursor: isDown ? "grabbing" : "grab",
-                    width: "100%",
-                  }}
+                  className={`builders-scroller ${isDown ? "active-scroll" : ""}`}
                   onMouseDown={handleMouseDown}
                   onMouseLeave={handleMouseLeave}
                   onMouseUp={handleMouseUp}
@@ -522,45 +450,24 @@ export default function Dashboard() {
                     <Box
                       key={b.id}
                       onClick={() => handleSelectBuilder(b.id)}
-                      sx={{
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "center",
-                        textAlign: "center",
-                        border:
-                          selectedBuilderId === b.id
-                            ? "2px solid #5065f6"
-                            : "2px solid transparent",
-                        borderRadius: "50%",
-                        p: 1,
-                        cursor: "pointer",
-                      }}
+                      className={`builder-item ${selectedBuilderId === b.id ? "selected-builder" : ""}`}
                     >
                       <Avatar
                         alt={b.name}
                         src={b.image}
-                        sx={{
-                          width: 40,
-                          height: 40,
-                          mb: 0.5,
-                        }}
+                        className="builder-avatar"
                       />
-                      <Typography variant="caption">{b.name}</Typography>
+                      <Typography variant="caption" className="builder-name">
+                        {b.name}
+                      </Typography>
                     </Box>
                   ))}
                 </Box>
               </Box>
 
-              <Box
-                sx={{
-                  mt: 2,
-                  display: "flex",
-                  alignItems: "flex-end",
-                  justifyContent: "space-between",
-                }}
-              >
-                <Box sx={{ display: "flex", flexDirection: "column" }}>
-                  <Typography variant="caption" sx={{ mb: 0.5 }}>
+              <Box className="uk-builders-actions">
+                <Box className="amount-input-container">
+                  <Typography variant="caption" className="amount-label">
                     Amount (£)
                   </Typography>
                   <TextField
@@ -569,9 +476,7 @@ export default function Dashboard() {
                     size="small"
                     value={invoiceAmount}
                     onChange={(e) => setInvoiceAmount(e.target.value)}
-                    sx={{
-                      width: 120,
-                    }}
+                    className="amount-input"
                   />
                 </Box>
 
@@ -579,14 +484,7 @@ export default function Dashboard() {
                   variant="contained"
                   disabled={disableRequest}
                   onClick={handleRequestClick}
-                  sx={{
-                    borderRadius: 2,
-                    backgroundColor: disableRequest ? "#ccc" : "#E0E0E0",
-                    color: "#000",
-                    "&:hover": {
-                      backgroundColor: disableRequest ? "#ccc" : "#d0d0d0",
-                    },
-                  }}
+                  className={`request-button ${disableRequest ? "disabled-button" : ""}`}
                 >
                   Request
                 </Button>
@@ -597,99 +495,36 @@ export default function Dashboard() {
 
         {/* Top Builders Section */}
         <Grid item xs={12} md={6}>
-          <Card
-            sx={{
-              borderRadius: 3,
-              backgroundColor: "#DCDCC6", // Match background of UK Builders
-              // padding: 2, // Uniform padding
-              height: "100%", // Match height with UK Builders
-            }}
-          >
+          <Card className="top-builders-card">
             <CardContent>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  alignItems: "center",
-                }}
-              >
-                <Typography variant="h6" fontWeight="bold">
+              <Box className="section-header">
+                <Typography variant="h6" className="section-title">
                   Top Builders
                 </Typography>
               </Box>
-              <Box
-                sx={{
-                  display: "flex",
-                  justifyContent: "left",
-                  gap: 3,
-                  mt: 3,
-                }}
-              >
+              <Box className="top-builders-list">
                 {topBuilders.map((builder) => (
-                  <Box
-                    key={builder.id}
-                    sx={{
-                      display: "flex",
-                      flexDirection: "column",
-                      alignItems: "center",
-                      textAlign: "center",
-                      width: 70, // Consistent avatar and name block width
-                    }}
-                  >
+                  <Box key={builder.id} className="top-builder-item">
                     <Avatar
                       alt={builder.name}
                       src={builder.image}
-                      sx={{
-                        width: 40,
-                        height: 40,
-                        mb: 0.5,
-                        bgcolor: "#BDBDBD", // Match neutral avatar background
-                      }}
+                      className="top-builder-avatar"
                     />
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontWeight: "bold",
-                        fontSize: "0.8rem", // Consistent text size
-                      }}
-                    >
+                    <Typography variant="body2" className="top-builder-name">
                       {builder.name}
                     </Typography>
-                    <Typography
-                      variant="caption"
-                      sx={{
-                        fontWeight: "bold",
-                        fontSize: "0.8rem",
-                      }}
-                    >
+                    <Typography variant="caption" className="top-builder-amount">
                       £{builder.totalPaid.toFixed(2)}
                     </Typography>
                   </Box>
                 ))}
               </Box>
-              <Box
-                sx={{
-                  mt: 2,
-                  display: "flex",
-                  justifyContent: "left", // Align button centrally
-                }}
-              >
+              <Box className="top-builders-button-container">
                 <Button
                   component={Link}
                   to="/dashboard/earnings"
                   variant="contained"
-                  sx={{
-                    backgroundColor: "#A2B99A", // Updated button color
-                    color: "#fff",
-                    textTransform: "none",
-                    borderRadius: 2,
-                    // padding: "6px 14px",
-                    // fontSize: "0.9rem",
-                    "&:hover": {
-                      backgroundColor: "#8FA784", // Darker shade for hover effect
-                    },
-                    mt: 2.3,
-                  }}
+                  className="view-more-button"
                 >
                   View More
                 </Button>
@@ -705,46 +540,35 @@ export default function Dashboard() {
         onClose={handleClose}
         maxWidth="xs"
         fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            p: 2,
-          },
-        }}
+        className="add-builder-dialog"
       >
-        <DialogTitle sx={{ textAlign: "center", fontWeight: "bold" }}>
+        <DialogTitle className="dialog-title">
           <Box
             component="img"
             src="/EABuildingWorksLTD.png"
             alt="Logo"
-            sx={{ width: 280, mb: 1 }}
+            className="dialog-logo"
           />
-          <Typography variant="h6" sx={{ mt: 1 }}>
+          <Typography variant="h6" className="dialog-subtitle">
             Please add builder details below
           </Typography>
         </DialogTitle>
 
-        <DialogContent sx={{ textAlign: "center" }}>
+        <DialogContent className="dialog-content">
           <TextField
             label="Builder Name"
             fullWidth
             value={newBuilderName}
             onChange={(e) => setNewBuilderName(e.target.value)}
-            sx={{ mt: 2 }}
+            className="builder-name-input"
           />
         </DialogContent>
 
-        <DialogActions sx={{ justifyContent: "center" }}>
+        <DialogActions className="dialog-actions">
           <Button
             onClick={handleClose}
             variant="outlined"
-            sx={{
-              borderColor: "#DCDCC6",
-              color: "#000",
-              "&:hover": {
-                backgroundColor: "#f0f0f0",
-              },
-            }}
+            className="cancel-button"
           >
             Cancel
           </Button>
@@ -752,14 +576,7 @@ export default function Dashboard() {
           <Button
             onClick={handleAddBuilder}
             variant="contained"
-            sx={{
-              ml: 2,
-              backgroundColor: "#DCDCC6",
-              color: "#000",
-              "&:hover": {
-                backgroundColor: "#c5c0ad",
-              },
-            }}
+            className="add-button"
           >
             Add
           </Button>
