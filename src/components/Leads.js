@@ -28,7 +28,8 @@ const Leads = () => {
   useEffect(() => {
     const fetchGoogleLeads = async () => {
       try {
-        const response = await axios.get("/api/google-leads");
+        const response = await axios.get(`${process.env.REACT_APP_API_URL}/api/google-leads`);
+
         setLeads(response.data || []);
         setFilteredLeads(response.data || []);
       } catch (error) {

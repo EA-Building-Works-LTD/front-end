@@ -20,7 +20,7 @@ const Login = ({ setUser }) => {
 
   const handleLogin = async () => {
     try {
-      const response = await axios.post("/api/login", credentials);
+      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, credentials);
       const { token, role } = response.data;
 
       // Save token and role in localStorage
