@@ -111,88 +111,90 @@ function App() {
               </AppBar>
             )}
 
-            {/* Sidebar Navigation */}
-            <Drawer
-              variant={isDesktop ? "permanent" : "temporary"}
-              open={isDesktop || drawerOpen}
-              onClose={toggleDrawer}
-              classes={{
-                paper: "sidebar-paper",
-              }}
-              ModalProps={{
-                keepMounted: true,
-              }}
-            >
-              <Toolbar className="sidebar-toolbar">
-                <Box
-                  component="img"
-                  src="/EABuildingWorksLTD.png"
-                  alt="EA Building Works Ltd Logo"
-                  className="sidebar-logo"
-                  onClick={toggleDrawer}
-                />
-              </Toolbar>
-              <SearchBar className="sidebar-searchbar" />
-              <List className="sidebar-list">
-                <ListItemButton
-                  component={Link}
-                  to="/dashboard"
-                  className="sidebar-listitem"
-                  onClick={toggleDrawer}
-                >
-                  <ListItemIcon className="sidebar-listicon">
-                    <DashboardIcon />
-                  </ListItemIcon>
-                  <ListItemText primary="Dashboard" />
-                </ListItemButton>
-
-                {user?.role === "admin" && (
+            {/* Sidebar Navigation (conditionally rendered) */}
+            {user && (
+              <Drawer
+                variant={isDesktop ? "permanent" : "temporary"}
+                open={isDesktop || drawerOpen}
+                onClose={toggleDrawer}
+                classes={{
+                  paper: "sidebar-paper",
+                }}
+                ModalProps={{
+                  keepMounted: true,
+                }}
+              >
+                <Toolbar className="sidebar-toolbar">
+                  <Box
+                    component="img"
+                    src="/EABuildingWorksLTD.png"
+                    alt="EA Building Works Ltd Logo"
+                    className="sidebar-logo"
+                    onClick={toggleDrawer}
+                  />
+                </Toolbar>
+                <SearchBar className="sidebar-searchbar" />
+                <List className="sidebar-list">
                   <ListItemButton
                     component={Link}
-                    to="/leads"
+                    to="/dashboard"
                     className="sidebar-listitem"
                     onClick={toggleDrawer}
                   >
                     <ListItemIcon className="sidebar-listicon">
-                      <PeopleIcon />
+                      <DashboardIcon />
                     </ListItemIcon>
-                    <ListItemText primary="Leads" />
+                    <ListItemText primary="Dashboard" />
                   </ListItemButton>
-                )}
 
-                {(user?.role === "admin" || user?.role === "builder") && (
-                  <ListItemButton
-                    component={Link}
-                    to="/builders"
-                    className="sidebar-listitem"
-                    onClick={toggleDrawer}
+                  {user?.role === "admin" && (
+                    <ListItemButton
+                      component={Link}
+                      to="/leads"
+                      className="sidebar-listitem"
+                      onClick={toggleDrawer}
+                    >
+                      <ListItemIcon className="sidebar-listicon">
+                        <PeopleIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Leads" />
+                    </ListItemButton>
+                  )}
+
+                  {(user?.role === "admin" || user?.role === "builder") && (
+                    <ListItemButton
+                      component={Link}
+                      to="/builders"
+                      className="sidebar-listitem"
+                      onClick={toggleDrawer}
+                    >
+                      <ListItemIcon className="sidebar-listicon">
+                        <BuildIcon />
+                      </ListItemIcon>
+                      <ListItemText primary="Builders" />
+                    </ListItemButton>
+                  )}
+                </List>
+                <Box className="sidebar-logout">
+                  <Button
+                    variant="contained"
+                    color="secondary"
+                    onClick={handleLogout}
+                    startIcon={<LogoutIcon />}
+                    className="logout-button"
                   >
-                    <ListItemIcon className="sidebar-listicon">
-                      <BuildIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Builders" />
-                  </ListItemButton>
-                )}
-              </List>
-              <Box className="sidebar-logout">
-                <Button
-                  variant="contained"
-                  color="secondary"
-                  onClick={handleLogout}
-                  startIcon={<LogoutIcon />}
-                  className="logout-button"
-                >
-                  Logout
-                </Button>
-              </Box>
-            </Drawer>
+                    Logout
+                  </Button>
+                </Box>
+              </Drawer>
+            )}
 
             {/* Main Content */}
             <Box
               component="main"
               className="main-content"
               sx={{
-                marginLeft: isDesktop ? `${drawerWidth}px` : 0,
+                marginLeft: isDesktop && user ? `${drawerWidth}px` : 0,
                 paddingTop: user && !isDesktop ? "64px" : "0",
               }}
             >

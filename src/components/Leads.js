@@ -9,7 +9,6 @@ import {
   InputLabel,
   Select,
   MenuItem,
-  Toolbar,
   TablePagination,
   CircularProgress,
   Button,
@@ -17,7 +16,6 @@ import {
 import { Email, Phone, MoreVert } from "@mui/icons-material";
 import axios from "axios";
 import "./Leads.css";
-import SearchPopup from "./SearchPopup"; 
 
 const Leads = () => {
   const [leads, setLeads] = useState([]);
@@ -26,15 +24,11 @@ const Leads = () => {
   const [filters, setFilters] = useState({ builder: "", city: "", budget: "" });
   const [sortOrder, setSortOrder] = useState("desc");
   const [page, setPage] = useState(0);
-  const [rowsPerPage, setRowsPerPage] = useState(25);
+  const [rowsPerPage, setRowsPerPage] = useState(10);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedCards, setExpandedCards] = useState({});
-  const [isSearchPopupOpen, setIsSearchPopupOpen] = useState(false); // New state to handle popup
 
-  const toggleSearchPopup = () => {
-    setIsSearchPopupOpen((prev) => !prev);
-  };
 
   useEffect(() => {
     const fetchGoogleLeads = async () => {
@@ -158,23 +152,6 @@ const Leads = () => {
       </Typography>
 
       <Box className="toolbar-section">
-        <Box className="search-bar">
-          <TextField
-            label="Search"
-            variant="outlined"
-            fullWidth
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </Box>
-
-        {/* Render SearchPopup */}
-        <SearchPopup
-          open={isSearchPopupOpen}
-          handleClose={toggleSearchPopup}
-          leads={leads} // Pass the leads data to SearchPopup
-        />
-
         <Box className="filter-container">
           <FormControl>
             <InputLabel>Builder</InputLabel>
@@ -235,6 +212,18 @@ const Leads = () => {
               <MenuItem value="desc">Newest First</MenuItem>
             </Select>
           </FormControl>
+        </Box>
+      </Box>
+
+      <Box className="toolbar-section">
+        <Box className="search-bar">
+          <TextField
+            label="Search Leads..."
+            variant="outlined"
+            fullWidth
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </Box>
       </Box>
 

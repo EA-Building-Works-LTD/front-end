@@ -115,6 +115,7 @@
   line-height: 1.2; /* Slightly reduce line height for tighter appearance */
 }
 
+
 /* Top Section */
 .toolbar-section {
   display: flex;
@@ -122,15 +123,17 @@
   gap: 16px;
   margin: 30px 16px 20px 16px; /* Add spacing to the top section */
   padding: 16px;
-  background-color: #f6f6f6; /* Optional: Add a background color to differentiate the section */
-  border-radius: 8px; /* Optional: Add rounded corners */
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow */
+  background-color: #7D9B76; /* Optional: Add a background color to differentiate the section */
+  border-radius: 8px; 
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
 }
 
 /* Search Bar Styling */
 .toolbar-section .search-bar {
   width: 100%; /* Make the search bar expand fully */
   max-width: none; /* Remove the max-width restriction */
+  background-color: white;
+  border-radius: 55px;
 }
 
 .toolbar-section .search-bar input {
@@ -159,6 +162,29 @@
   min-width: 150px;
 }
 
+/* Change the border color for the filter boxes */
+.toolbar-section .filter-container .MuiOutlinedInput-root fieldset {
+  border-color: white; /* Default border color */
+}
+
+.toolbar-section .filter-container .MuiOutlinedInput-root:hover fieldset {
+  border-color: white; /* Border color on hover */
+}
+
+.toolbar-section .filter-container .MuiOutlinedInput-root.Mui-focused fieldset {
+  border-color: white; /* Border color when focused */
+}
+
+/* Change the label color */
+.toolbar-section .filter-container .MuiInputLabel-root {
+  color: white; /* Default label color */
+}
+
+.toolbar-section .filter-container .MuiInputLabel-root.Mui-focused {
+  color: white; /* Label color when focused */
+}
+
+
 /* Responsive Adjustments */
 @media (max-width: 768px) {
   .toolbar-section {
@@ -171,8 +197,6 @@
     gap: 12px;
   }
 }
-
-
 
 /* Responsive styles */
 @media (max-width: 768px) {

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
 
@@ -14,13 +14,37 @@ import {
 import LoginIcon from "@mui/icons-material/Login";
 
 const Login = ({ setUser }) => {
-  const [credentials, setCredentials] = useState({ username: "", password: "" });
+  const [credentials, setCredentials] = useState({
+    username: "",
+    password: "",
+  });
   const [error, setError] = useState("");
   const navigate = useNavigate();
 
+  useEffect(() => {
+    // Disable scrolling for the entire page
+    document.documentElement.style.overflow = "hidden"; // For <html>
+    document.documentElement.style.height = "100%"; // Set full height for <html>
+    document.body.style.overflow = "hidden"; // For <body>
+    document.body.style.height = "100%"; // Set full height for <body>
+    document.body.style.margin = "0"; // Ensure no margins contribute to scrolling
+
+    return () => {
+      // Re-enable scrolling when unmounting the component
+      document.documentElement.style.overflow = "auto";
+      document.documentElement.style.height = "auto";
+      document.body.style.overflow = "auto";
+      document.body.style.height = "auto";
+      document.body.style.margin = "initial";
+    };
+  }, []);
+
   const handleLogin = async () => {
     try {
-      const response = await axios.post(`${process.env.REACT_APP_API_URL}/api/login`, credentials);
+      const response = await axios.post(
+        `${process.env.REACT_APP_API_URL}/api/login`,
+        credentials
+      );
       const { token, role } = response.data;
 
       // Save token and role in localStorage
@@ -43,20 +67,16 @@ const Login = ({ setUser }) => {
   return (
     <Box
       sx={{
-        // Use full viewport height; ensures no extra scroll
-        // height: "100vh",
+        height: "100vh",
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        // remove extra page-level padding so it doesn't push content
-        // p: 2, // optional
       }}
     >
-      {/* Outer container for Card */}
       <Box
         sx={{
           width: "100%",
-          maxWidth: 500,  // slightly smaller than 600 to reduce vertical growth
+          maxWidth: 500,
           textAlign: "center",
         }}
       >
@@ -68,34 +88,31 @@ const Login = ({ setUser }) => {
           }}
         >
           <CardContent>
-            {/* Logo (inside the card) */}
             <Box
               component="img"
               src="/EABuildingWorksLTD.png"
               alt="EA Building Works LTD"
               sx={{
-                width: 220,      // slightly smaller to help fit on smaller screens
+                width: 220,
                 height: "auto",
-                mb: 2,           // spacing below logo
+                mb: 2,
                 display: "block",
                 mx: "auto",
               }}
             />
 
-            {/* Login icon above the title */}
             <Box sx={{ mb: 1 }}>
               <LoginIcon sx={{ fontSize: 40, color: "text.secondary" }} />
             </Box>
 
-            {/* Title / Subtitle */}
             <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
-              Sign in with email
+              Login With Your Credentials
             </Typography>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-              Make a new doc to bring your words, data, and teams together. For free
+              Please contact admin if you do not have an account or if you have
+              forgotten your password.
             </Typography>
 
-            {/* Email Field */}
             <TextField
               label="Email"
               fullWidth
@@ -106,7 +123,6 @@ const Login = ({ setUser }) => {
               }
             />
 
-            {/* Password Field */}
             <TextField
               label="Password"
               type="password"
@@ -118,7 +134,6 @@ const Login = ({ setUser }) => {
               }
             />
 
-            {/* Login Button */}
             <Button
               variant="contained"
               fullWidth
@@ -135,9 +150,13 @@ const Login = ({ setUser }) => {
               Login
             </Button>
 
-            {/* Show error message if any */}
             {error && (
-              <Typography variant="body2" color="red" align="center" sx={{ mt: 2 }}>
+              <Typography
+                variant="body2"
+                color="red"
+                align="center"
+                sx={{ mt: 2 }}
+              >
                 {error}
               </Typography>
             )}
