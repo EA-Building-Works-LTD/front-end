@@ -71,6 +71,7 @@ const Login = ({ setUser }) => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
+        padding: "16px", // Add padding for smaller screens
       }}
     >
       <Box
@@ -78,13 +79,26 @@ const Login = ({ setUser }) => {
           width: "100%",
           maxWidth: 500,
           textAlign: "center",
+          "@media (max-width: 768px)": {
+            maxWidth: "90%", // Adjust width for tablets
+          },
+          "@media (max-width: 480px)": {
+            maxWidth: "100%", // Adjust width for mobile
+            padding: "0 16px", // Add horizontal padding on mobile
+          },
         }}
       >
         <Card
           sx={{
             borderRadius: 3,
             boxShadow: 3,
-            p: 4,
+            padding: "32px",
+            "@media (max-width: 768px)": {
+              padding: "24px", // Reduce padding for tablets
+            },
+            "@media (max-width: 480px)": {
+              padding: "16px", // Reduce padding for mobile
+            },
           }}
         >
           <CardContent>
@@ -95,20 +109,43 @@ const Login = ({ setUser }) => {
               sx={{
                 width: 220,
                 height: "auto",
-                mb: 2,
+                marginBottom: "16px",
                 display: "block",
-                mx: "auto",
+                margin: "0 auto",
+                "@media (max-width: 480px)": {
+                  width: 180, // Adjust logo size for mobile
+                },
               }}
             />
 
-            <Box sx={{ mb: 1 }}>
+            <Box sx={{ marginBottom: "16px" }}>
               <LoginIcon sx={{ fontSize: 40, color: "text.secondary" }} />
             </Box>
 
-            <Typography variant="h5" fontWeight="bold" sx={{ mb: 1 }}>
+            <Typography
+              variant="h5"
+              fontWeight="bold"
+              sx={{
+                marginBottom: "8px",
+                fontSize: "1.5rem",
+                "@media (max-width: 480px)": {
+                  fontSize: "1.25rem", // Adjust font size for mobile
+                },
+              }}
+            >
               Login With Your Credentials
             </Typography>
-            <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
+            <Typography
+              variant="body2"
+              color="text.secondary"
+              sx={{
+                marginBottom: "24px",
+                fontSize: "0.875rem",
+                "@media (max-width: 480px)": {
+                  fontSize: "0.75rem", // Adjust font size for mobile
+                },
+              }}
+            >
               Please contact admin if you do not have an account or if you have
               forgotten your password.
             </Typography>
@@ -121,6 +158,11 @@ const Login = ({ setUser }) => {
               onChange={(e) =>
                 setCredentials({ ...credentials, username: e.target.value })
               }
+              sx={{
+                "@media (max-width: 480px)": {
+                  marginBottom: "16px", // Add spacing for mobile
+                },
+              }}
             />
 
             <TextField
@@ -132,6 +174,11 @@ const Login = ({ setUser }) => {
               onChange={(e) =>
                 setCredentials({ ...credentials, password: e.target.value })
               }
+              sx={{
+                "@media (max-width: 480px)": {
+                  marginBottom: "24px", // Add spacing for mobile
+                },
+              }}
             />
 
             <Button
@@ -141,10 +188,14 @@ const Login = ({ setUser }) => {
               sx={{
                 backgroundColor: "#000",
                 color: "#fff",
-                py: 1.2,
-                mt: 3,
+                padding: "12px 0",
+                marginTop: "16px",
                 fontWeight: "bold",
                 "&:hover": { backgroundColor: "#333" },
+                "@media (max-width: 480px)": {
+                  padding: "10px 0", // Adjust padding for mobile
+                  fontSize: "0.875rem", // Adjust font size for mobile
+                },
               }}
             >
               Login
@@ -155,7 +206,13 @@ const Login = ({ setUser }) => {
                 variant="body2"
                 color="red"
                 align="center"
-                sx={{ mt: 2 }}
+                sx={{
+                  marginTop: "16px",
+                  fontSize: "0.875rem",
+                  "@media (max-width: 480px)": {
+                    fontSize: "0.75rem", // Adjust font size for mobile
+                  },
+                }}
               >
                 {error}
               </Typography>
