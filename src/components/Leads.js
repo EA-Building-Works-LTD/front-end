@@ -17,6 +17,7 @@ import {
 import { Email, Phone, MoreVert } from "@mui/icons-material";
 import axios from "axios";
 import "./Leads.css";
+import SearchPopup from "./SearchPopup"; 
 
 const Leads = () => {
   const [leads, setLeads] = useState([]);
@@ -28,7 +29,12 @@ const Leads = () => {
   const [rowsPerPage, setRowsPerPage] = useState(25);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
-  const [expandedCards, setExpandedCards] = useState({}); // Keep track of expanded cards
+  const [expandedCards, setExpandedCards] = useState({});
+  const [isSearchPopupOpen, setIsSearchPopupOpen] = useState(false); // New state to handle popup
+
+  const toggleSearchPopup = () => {
+    setIsSearchPopupOpen((prev) => !prev);
+  };
 
   useEffect(() => {
     const fetchGoogleLeads = async () => {
@@ -43,24 +49,20 @@ const Leads = () => {
             },
           }
         );
-
         setLeads(response.data || []);
         setFilteredLeads(response.data || []);
       } catch (error) {
-        if (error.response && error.response.status === 403) {
-          setError("Access forbidden. Please check your permissions.");
-        } else {
-          setError(
-            `Failed to fetch leads. Status: ${
-              error.response ? error.response.status : error.message
-            }`
-          );
-        }
+        setError(
+          error.response?.status === 403
+            ? "Access forbidden. Please check your permissions."
+            : `Failed to fetch leads. Status: ${
+                error.response ? error.response.status : error.message
+              }`
+        );
       } finally {
         setLoading(false);
       }
     };
-
     fetchGoogleLeads();
   }, []);
 
@@ -150,79 +152,91 @@ const Leads = () => {
 
   return (
     <Box>
-      <Typography variant="h4" gutterBottom>
-        Leads
+      {/* Toolbar for Search and Filters */}
+      <Typography variant="h3" className="page-heading">
+        EA Building Works LTD Leads
       </Typography>
 
-      {/* Toolbar for Search and Filters */}
-      <Toolbar>
-        <TextField
-          label="Search"
-          variant="outlined"
-          fullWidth
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
+      <Box className="toolbar-section">
+        <Box className="search-bar">
+          <TextField
+            label="Search"
+            variant="outlined"
+            fullWidth
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </Box>
+
+        {/* Render SearchPopup */}
+        <SearchPopup
+          open={isSearchPopupOpen}
+          handleClose={toggleSearchPopup}
+          leads={leads} // Pass the leads data to SearchPopup
         />
-        <FormControl sx={{ minWidth: 150, ml: 2 }}>
-          <InputLabel>Builder</InputLabel>
-          <Select
-            value={filters.builder}
-            onChange={(e) =>
-              setFilters({ ...filters, builder: e.target.value })
-            }
-          >
-            {Array.from(
-              new Set(leads.map((lead) => lead.builder || "N/A"))
-            ).map((builder, index) => (
-              <MenuItem key={`builder-${index}`} value={builder}>
-                {builder}
-              </MenuItem>
-            ))}
-          </Select>
-        </FormControl>
-        <FormControl sx={{ minWidth: 150, ml: 2 }}>
-          <InputLabel>City</InputLabel>
-          <Select
-            value={filters.city}
-            onChange={(e) => setFilters({ ...filters, city: e.target.value })}
-          >
-            {Array.from(new Set(leads.map((lead) => lead.city || "N/A"))).map(
-              (city, index) => (
-                <MenuItem key={`city-${index}`} value={city}>
-                  {city}
+
+        <Box className="filter-container">
+          <FormControl>
+            <InputLabel>Builder</InputLabel>
+            <Select
+              value={filters.builder}
+              onChange={(e) =>
+                setFilters({ ...filters, builder: e.target.value })
+              }
+            >
+              {Array.from(
+                new Set(leads.map((lead) => lead.builder || "N/A"))
+              ).map((builder, index) => (
+                <MenuItem key={`builder-${index}`} value={builder}>
+                  {builder}
                 </MenuItem>
-              )
-            )}
-          </Select>
-        </FormControl>
-        <FormControl sx={{ minWidth: 150, ml: 2 }}>
-          <InputLabel>Budget</InputLabel>
-          <Select
-            value={filters.budget}
-            onChange={(e) =>
-              setFilters({ ...filters, budget: e.target.value })
-            }
-          >
-            {Array.from(new Set(leads.map((lead) => lead.budget || "N/A"))).map(
-              (budget, index) => (
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl>
+            <InputLabel>City</InputLabel>
+            <Select
+              value={filters.city}
+              onChange={(e) => setFilters({ ...filters, city: e.target.value })}
+            >
+              {Array.from(new Set(leads.map((lead) => lead.city || "N/A"))).map(
+                (city, index) => (
+                  <MenuItem key={`city-${index}`} value={city}>
+                    {city}
+                  </MenuItem>
+                )
+              )}
+            </Select>
+          </FormControl>
+          <FormControl>
+            <InputLabel>Budget</InputLabel>
+            <Select
+              value={filters.budget}
+              onChange={(e) =>
+                setFilters({ ...filters, budget: e.target.value })
+              }
+            >
+              {Array.from(
+                new Set(leads.map((lead) => lead.budget || "N/A"))
+              ).map((budget, index) => (
                 <MenuItem key={`budget-${index}`} value={budget}>
                   {budget}
                 </MenuItem>
-              )
-            )}
-          </Select>
-        </FormControl>
-        <FormControl sx={{ minWidth: 150, ml: 2 }}>
-          <InputLabel>Sort Order</InputLabel>
-          <Select
-            value={sortOrder}
-            onChange={(e) => setSortOrder(e.target.value)}
-          >
-            <MenuItem value="asc">Oldest First</MenuItem>
-            <MenuItem value="desc">Newest First</MenuItem>
-          </Select>
-        </FormControl>
-      </Toolbar>
+              ))}
+            </Select>
+          </FormControl>
+          <FormControl>
+            <InputLabel>Sort Order</InputLabel>
+            <Select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value)}
+            >
+              <MenuItem value="asc">Oldest First</MenuItem>
+              <MenuItem value="desc">Newest First</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
+      </Box>
 
       {/* Pagination */}
       <TablePagination
@@ -311,10 +325,7 @@ const Leads = () => {
                       : truncateText(lead.details || "N/A", 50)}
                   </Typography>
                   {lead.details && lead.details.length > 50 && (
-                    <Button
-                      size="small"
-                      onClick={() => toggleExpand(index)}
-                    >
+                    <Button size="small" onClick={() => toggleExpand(index)}>
                       {expandedCards[index] ? "Show Less" : "Show More"}
                     </Button>
                   )}

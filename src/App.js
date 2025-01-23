@@ -9,8 +9,12 @@ import {
   Toolbar,
   ListItemButton,
   Button,
+  IconButton,
+  AppBar,
+  useMediaQuery,
 } from "@mui/material";
 import { Routes, Route, Navigate, Link } from "react-router-dom";
+import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
@@ -30,9 +34,13 @@ import EarningsPage from "./components/EarningsPage";
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
 
+const drawerWidth = 230;
+
 function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
+  const [drawerOpen, setDrawerOpen] = useState(false); // State to manage drawer open/close
+  const isDesktop = useMediaQuery("(min-width:1025px)"); // Media query to detect screen size
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -65,6 +73,11 @@ function App() {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
     setUser(null);
+    setDrawerOpen(false); // Close the drawer on logout
+  };
+
+  const toggleDrawer = () => {
+    setDrawerOpen(!drawerOpen);
   };
 
   if (!authChecked) {
@@ -78,78 +91,111 @@ function App() {
           <Box className="app-container">
             <CssBaseline />
 
-            {/* Sidebar Navigation */}
-            {user && (
-              <Drawer
-                variant="permanent"
-                className="sidebar-drawer"
-                classes={{
-                  paper: "sidebar-paper",
-                }}
-              >
-                <Toolbar className="sidebar-toolbar">
-                  <Box
-                    component="img"
-                    src="/EABuildingWorksLTD.png"
-                    alt="EA Building Works Ltd Logo"
-                    className="sidebar-logo"
-                  />
+            {/* AppBar for mobile/tablet */}
+            {user && !isDesktop && (
+              <AppBar position="fixed" className="appbar">
+                <Toolbar className="toolbar">
+                  <IconButton
+                    edge="start"
+                    color="inherit"
+                    aria-label="menu"
+                    onClick={toggleDrawer}
+                    className="menu-button"
+                  >
+                    <MenuIcon />
+                  </IconButton>
+                  <Box className="mobile-searchbar">
+                    <SearchBar />
+                  </Box>
                 </Toolbar>
-                <SearchBar className="sidebar-searchbar" />
-                <List className="sidebar-list">
-                  <ListItemButton
-                    component={Link}
-                    to="/dashboard"
-                    className="sidebar-listitem"
-                  >
-                    <ListItemIcon className="sidebar-listicon">
-                      <DashboardIcon />
-                    </ListItemIcon>
-                    <ListItemText primary="Dashboard" />
-                  </ListItemButton>
-
-                  {user.role === "admin" && (
-                    <ListItemButton
-                      component={Link}
-                      to="/leads"
-                      className="sidebar-listitem"
-                    >
-                      <ListItemIcon className="sidebar-listicon">
-                        <PeopleIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Leads" />
-                    </ListItemButton>
-                  )}
-
-                  {(user.role === "admin" || user.role === "builder") && (
-                    <ListItemButton
-                      component={Link}
-                      to="/builders"
-                      className="sidebar-listitem"
-                    >
-                      <ListItemIcon className="sidebar-listicon">
-                        <BuildIcon />
-                      </ListItemIcon>
-                      <ListItemText primary="Builders" />
-                    </ListItemButton>
-                  )}
-                </List>
-                <Box className="sidebar-logout">
-                  <Button
-                    variant="contained"
-                    color="secondary"
-                    onClick={handleLogout}
-                    startIcon={<LogoutIcon />}
-                    className="logout-button"
-                  >
-                    Logout
-                  </Button>
-                </Box>
-              </Drawer>
+              </AppBar>
             )}
 
+            {/* Sidebar Navigation */}
+            <Drawer
+              variant={isDesktop ? "permanent" : "temporary"}
+              open={isDesktop || drawerOpen}
+              onClose={toggleDrawer}
+              classes={{
+                paper: "sidebar-paper",
+              }}
+              ModalProps={{
+                keepMounted: true,
+              }}
+            >
+              <Toolbar className="sidebar-toolbar">
+                <Box
+                  component="img"
+                  src="/EABuildingWorksLTD.png"
+                  alt="EA Building Works Ltd Logo"
+                  className="sidebar-logo"
+                  onClick={toggleDrawer}
+                />
+              </Toolbar>
+              <SearchBar className="sidebar-searchbar" />
+              <List className="sidebar-list">
+                <ListItemButton
+                  component={Link}
+                  to="/dashboard"
+                  className="sidebar-listitem"
+                  onClick={toggleDrawer}
+                >
+                  <ListItemIcon className="sidebar-listicon">
+                    <DashboardIcon />
+                  </ListItemIcon>
+                  <ListItemText primary="Dashboard" />
+                </ListItemButton>
+
+                {user?.role === "admin" && (
+                  <ListItemButton
+                    component={Link}
+                    to="/leads"
+                    className="sidebar-listitem"
+                    onClick={toggleDrawer}
+                  >
+                    <ListItemIcon className="sidebar-listicon">
+                      <PeopleIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Leads" />
+                  </ListItemButton>
+                )}
+
+                {(user?.role === "admin" || user?.role === "builder") && (
+                  <ListItemButton
+                    component={Link}
+                    to="/builders"
+                    className="sidebar-listitem"
+                    onClick={toggleDrawer}
+                  >
+                    <ListItemIcon className="sidebar-listicon">
+                      <BuildIcon />
+                    </ListItemIcon>
+                    <ListItemText primary="Builders" />
+                  </ListItemButton>
+                )}
+              </List>
+              <Box className="sidebar-logout">
+                <Button
+                  variant="contained"
+                  color="secondary"
+                  onClick={handleLogout}
+                  startIcon={<LogoutIcon />}
+                  className="logout-button"
+                >
+                  Logout
+                </Button>
+              </Box>
+            </Drawer>
+
             {/* Main Content */}
-            <Box component="main" className="main-content">
+            <Box
+              component="main"
+              className="main-content"
+              sx={{
+                marginLeft: isDesktop ? `${drawerWidth}px` : 0,
+                paddingTop: user && !isDesktop ? "64px" : "0",
+              }}
+            >
               <Routes>
                 {!user ? (
                   <Route path="*" element={<Navigate to="/login" replace />} />

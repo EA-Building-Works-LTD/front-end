@@ -1,6 +1,9 @@
 /* General App Container */
 .app-container {
   display: flex;
+  flex-direction: row;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Sidebar Drawer */
@@ -12,10 +15,10 @@
 .sidebar-paper {
   width: 230px;
   box-sizing: border-box;
-  background-color: #dcdcc6;
+  background-color: #7D9B76;
   display: flex;
   flex-direction: column;
-  height: 100vh;
+  height: 100%;
 }
 
 /* Sidebar Toolbar */
@@ -28,7 +31,8 @@
 
 /* Sidebar Logo */
 .sidebar-logo {
-  height: 80px;
+  height: 180px;
+  cursor: pointer; /* Allow clickable logo */
 }
 
 /* Sidebar SearchBar */
@@ -39,17 +43,24 @@
 /* Sidebar List */
 .sidebar-list {
   flex-grow: 1;
+  padding: 0;
 }
 
 /* Sidebar ListItem */
 .sidebar-listitem {
-  padding-left: 24px;
+  padding-left: 16px;
+  color: white;
+  transition: background-color 0.3s ease;
+}
+
+.sidebar-listitem:hover {
+  background-color: #5c7858;
 }
 
 /* Sidebar ListIcon */
 .sidebar-listicon {
   min-width: 40px;
-  color: #000;
+  color: white;
 }
 
 /* Sidebar Logout Section */
@@ -60,16 +71,17 @@
 
 /* Logout Button */
 .logout-button {
-  background-color: #a2b99a;
-  color: #fff;
+  background-color: #5c7858;
+  color: white;
   text-transform: none;
   border-radius: 8px;
   width: 80%;
-  transition: background-color 0.3s;
+  font-size: 14px;
+  transition: background-color 0.3s ease;
 }
 
 .logout-button:hover {
-  background-color: #8fa784;
+  background-color: #3d4e3a;
 }
 
 /* Main Content */
@@ -77,54 +89,86 @@
   flex-grow: 1;
   padding: 24px;
   background-color: #f6f6f6;
-  min-height: 100vh;
-}
-
-.main-content-mobile {
-  padding: 16px;
+  overflow-y: auto;
 }
 
 /* Mobile AppBar */
-.mobile-appbar {
-  background-color: #dcdcc6;
-  z-index: 1201; /* Ensure it sits above the drawer */
+.appbar {
+  background-color: #7D9B76 !important;
+  z-index: 1201;
+  height: 64px;
+  display: flex;
+  padding: 0 16px;
+  box-shadow: none;
 }
 
-/* Mobile Toolbar */
-.mobile-toolbar {
+/* Toolbar for AppBar */
+.toolbar {
   display: flex;
   align-items: center;
-  background-color: #dcdcc6;
-  width: 100%;
+  justify-content: flex-start;
 }
 
 /* Menu Button */
 .menu-button {
-  margin-right: 16px;
-  color: #000;
+  color: white;
+  margin-right: 20px; /* Creates space between the hamburger menu and the search bar */
 }
 
 /* Mobile SearchBar */
 .mobile-searchbar {
   flex-grow: 1;
+  background: transparent !important; /* Transparent background for the search bar */
+  border: none;
 }
 
-/* Mobile Toolbar Spacing */
-.mobile-toolbar-spacing {
-  height: 64px; /* Match AppBar height */
+/* .mobile-searchbar input {
+  background: transparent !important;
+  border: none;
+  color: white;
+  font-size: 14px;
+  width: 100%;
+  outline: none;
 }
 
-/* Responsive Drawer */
-@media (min-width: 960px) {
-  /* Hide hamburger menu on desktop */
+.mobile-searchbar input::placeholder {
+  color: #d1d1d1;  Lighter placeholder color 
+  opacity: 1;
+} */
+
+/* Responsive Drawer 
+@media (max-width: 768px) {
+  .sidebar-drawer {
+    display: none !important;
+  }
+
+  .main-content {
+    padding: 16px;
+  }
+}
+
+@media (min-width: 769px) {
   .hamburger-menu {
     display: none;
   }
 }
 
-@media (max-width: 959px) {
-  /* Hide sidebar on mobile/tablet */
-  .sidebar-drawer {
-    display: none;
+ Temporary Drawer (Mobile/Tablet) Overrides 
+@media (max-width: 768px) {
+  .sidebar-paper {
+    height: 100%;
   }
-}
+
+  .sidebar-logout {
+    margin: 8px;
+  }
+
+  .logout-button {
+    width: 90%;
+    font-size: 14px;
+  }
+
+  .sidebar-listitem {
+    padding-left: 16px;
+  }
+}*/

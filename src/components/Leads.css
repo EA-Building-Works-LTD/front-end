@@ -104,6 +104,76 @@
   box-shadow: 0 6px 12px rgba(0, 0, 0, 0.15);
 }
 
+.page-heading {
+  font-size: 36px; /* Larger font size for better emphasis */
+  font-weight: bold; /* Make it stand out */
+  color: #333; /* Neutral dark grey for good readability */
+  text-align: center; /* Center the heading */
+  margin-bottom: 20px; /* Add spacing below the heading */
+  margin-top: 40px !important; /* Optional spacing above the heading */
+  text-transform: capitalize; /* Capitalize the first letter of each word */
+  line-height: 1.2; /* Slightly reduce line height for tighter appearance */
+}
+
+/* Top Section */
+.toolbar-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  margin: 30px 16px 20px 16px; /* Add spacing to the top section */
+  padding: 16px;
+  background-color: #f6f6f6; /* Optional: Add a background color to differentiate the section */
+  border-radius: 8px; /* Optional: Add rounded corners */
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Optional: Add a subtle shadow */
+}
+
+/* Search Bar Styling */
+.toolbar-section .search-bar {
+  width: 100%; /* Make the search bar expand fully */
+  max-width: none; /* Remove the max-width restriction */
+}
+
+.toolbar-section .search-bar input {
+  width: 100%;
+  padding: 25px 16px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 16px; /* Increase font size for better readability */
+  color: #333;
+  box-sizing: border-box;
+}
+
+.toolbar-section .search-bar input::placeholder {
+  color: #aaa;
+}
+
+/* Filter Container */
+.toolbar-section .filter-container {
+  display: flex;
+  flex-wrap: wrap; /* Allow filters to wrap on smaller screens */
+  gap: 16px;
+}
+
+.toolbar-section .filter-container .MuiFormControl-root {
+  flex: 1; /* Ensure all filters have equal space */
+  min-width: 150px;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+  .toolbar-section {
+    margin: 10px; /* Reduce margin on smaller screens */
+    padding: 12px; /* Adjust padding for smaller screens */
+  }
+
+  .toolbar-section .filter-container {
+    flex-direction: column; /* Stack filters vertically on mobile */
+    gap: 12px;
+  }
+}
+
+
+
 /* Responsive styles */
 @media (max-width: 768px) {
   .lead-container {

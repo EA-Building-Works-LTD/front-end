@@ -17,36 +17,35 @@ const SearchPopup = ({ open, handleClose, leads }) => {
   const [recentSearches, setRecentSearches] = useState([]);
   const [hoveredResult, setHoveredResult] = useState(null);
 
-  const searchInputRef = useRef(null); // Ref for automatically focusing on input
+  const searchInputRef = useRef(null);
+  
 
-  // Automatically focus on search input when the modal opens
+  // Automatically focus on the input when the modal opens
   useEffect(() => {
-    if (open) {
-      searchInputRef.current?.focus();
-    }
+    if (open) searchInputRef.current?.focus();
   }, [open]);
 
-  // Load recent searches from localStorage when the component mounts
+  // Load recent searches from localStorage on mount
   useEffect(() => {
     const savedSearches = localStorage.getItem("recentSearches");
-    if (savedSearches) {
-      setRecentSearches(JSON.parse(savedSearches));
-    }
+    if (savedSearches) setRecentSearches(JSON.parse(savedSearches));
   }, []);
 
-  // Save recent searches to localStorage whenever it changes
+  // Save recent searches to localStorage when they change
   useEffect(() => {
     localStorage.setItem("recentSearches", JSON.stringify(recentSearches));
   }, [recentSearches]);
 
-  // Handle user search
   const handleSearch = (e) => {
-    const query = e.target.value.toLowerCase();
+    const query = e.target.value.toLowerCase().trim();
     setSearchQuery(query);
 
     if (query) {
-      const filteredResults = leads?.filter((lead) =>
-        lead.fullName.toLowerCase().includes(query)
+      const filteredResults = leads.filter(
+        (lead) =>
+          (lead.fullName || "").toLowerCase().includes(query) ||
+          (lead.city || "").toLowerCase().includes(query) ||
+          (lead.builder || "").toLowerCase().includes(query)
       );
       setResults(filteredResults);
     } else {
@@ -54,24 +53,18 @@ const SearchPopup = ({ open, handleClose, leads }) => {
     }
   };
 
-  // Handle adding to recent searches on result click
+  // Handle selecting a search result
   const handleResultClick = (result) => {
-    setHoveredResult(result); // Update hovered user details
+    setHoveredResult(result);
 
-    // Add the clicked user to recent searches, ensuring no duplicates and a max of 3 items
+    // Add to recent searches
     setRecentSearches((prev) => {
       const filtered = prev.filter((item) => item._id !== result._id);
       return [result, ...filtered].slice(0, 3);
     });
   };
 
-  // Handle recent search click
-  const handleRecentSearchClick = (recent) => {
-    setSearchQuery(recent.fullName);
-    setResults([recent]); // Show the specific recent search result
-  };
-
-  // Save the last search to "Recent Searches" on modal close
+  // Handle closing the modal
   const handleModalClose = () => {
     setSearchQuery("");
     setResults([]);
@@ -80,64 +73,57 @@ const SearchPopup = ({ open, handleClose, leads }) => {
   };
 
   return (
-    <Modal
-      open={open}
-      onClose={handleModalClose}
-      aria-labelledby="search-popup"
-    >
+    <Modal open={open} onClose={handleModalClose}>
       <Box
         sx={{
-          width: "600px",
+          width: "80%",
+          maxWidth: "800px",
           margin: "auto",
-          marginTop: "100px",
+          marginTop: { xs: "50px", sm: "100px" },
           backgroundColor: "#fff",
           padding: "20px",
           borderRadius: "8px",
           boxShadow: 24,
+          maxHeight: "80vh",
+          overflowY: "auto",
         }}
       >
+        {/* Search Bar */}
         <TextField
           fullWidth
           variant="outlined"
-          placeholder="Search..."
+          placeholder="Search leads by name, city, or builder..."
           value={searchQuery}
           onChange={handleSearch}
-          inputRef={searchInputRef} // Attach the ref
-          autoFocus // Automatically focuses on modal open
+          inputRef={searchInputRef}
+          autoFocus
           InputProps={{
             startAdornment: (
-              <Box sx={{ marginRight: "8px" }}>
-                <Typography variant="h6">🔍</Typography>
-              </Box>
+              <Typography variant="h6" sx={{ mr: 1 }}>
+                🔍
+              </Typography>
             ),
           }}
         />
 
-        {/* Recent Searches Section */}
+        {/* Recent Searches */}
         <Box mt={2}>
-          <Typography variant="subtitle1" sx={{ mb: 1 }}>
-            Recent Searches
-          </Typography>
-          <List
-            sx={{ display: "flex", flexDirection: "row", overflowX: "auto" }}
-          >
-            {recentSearches.map((recent) => (
-              <ListItem
-                key={recent._id}
-                button
-                onClick={() => handleRecentSearchClick(recent)}
-              >
-                <Avatar sx={{ bgcolor: "#7D9B76", marginRight: "8px" }}>
-                  {recent.fullName.charAt(0)}
-                </Avatar>
-                <ListItemText
-                  primary={recent.fullName}
-                  sx={{ marginLeft: "5px" }}
-                />
-              </ListItem>
-            ))}
-
-            {recentSearches.length === 0 && (
+          <Typography variant="subtitle1">Recent Searches</Typography>
+          <List sx={{ display: "flex", gap: 2, overflowX: "auto" }}>
+            {recentSearches.length > 0 ? (
+              recentSearches.map((recent) => (
+                <ListItem
+                  key={recent._id}
+                  button
+                  onClick={() => handleResultClick(recent)}
+                >
+                  <Avatar sx={{ bgcolor: "#7D9B76" }}>
+                    {recent.fullName.charAt(0)}
+                  </Avatar>
+                  <ListItemText sx={{ ml: 1 }} primary={recent.fullName} />
+                </ListItem>
+              ))
+            ) : (
               <Typography variant="body2" color="textSecondary">
                 No recent searches.
               </Typography>
@@ -148,51 +134,45 @@ const SearchPopup = ({ open, handleClose, leads }) => {
         {/* Divider */}
         <Divider sx={{ my: 2 }} />
 
-        {/* Conditionally Render Search Results and Hovered Details */}
+        {/* Search Results */}
         {searchQuery && (
           <Box sx={{ display: "flex", gap: 2 }}>
-            {/* Left Column: Search Results */}
+            {/* Results List */}
             <Box sx={{ width: "40%", borderRight: "1px solid #ddd" }}>
               <List>
-                {results.map((result) => (
-                  <ListItem
-                    key={result._id}
-                    button
-                    onClick={() => handleResultClick(result)} // Add to recent searches on click
-                    onMouseEnter={() => setHoveredResult(result)} // Show details on hover
-                  >
-                    <Avatar sx={{ bgcolor: "#7D9B76", marginRight: "8px" }}>
-                      {result.fullName.charAt(0)}
-                    </Avatar>
-                    <ListItemText
-                      primary={result.fullName}
-                      sx={{ marginLeft: "5px" }} // Add left margin to the text
-                    />
-                  </ListItem>
-                ))}
-                {searchQuery && results.length === 0 && (
-                  <Typography
-                    variant="body2"
-                    color="textSecondary"
-                    sx={{ p: 2 }}
-                  >
+                {results.length > 0 ? (
+                  results.map((result) => (
+                    <ListItem
+                      key={result._id}
+                      button
+                      onClick={() => handleResultClick(result)}
+                      onMouseEnter={() => setHoveredResult(result)}
+                    >
+                      <Avatar sx={{ bgcolor: "#7D9B76", mr: 1 }}>
+                        {result.fullName.charAt(0)}
+                      </Avatar>
+                      <ListItemText primary={result.fullName} secondary={`${result.city} - ${result.builder}`} />
+                    </ListItem>
+                  ))
+                ) : (
+                  <Typography variant="body2" sx={{ p: 2 }} color="textSecondary">
                     No results found.
                   </Typography>
                 )}
               </List>
             </Box>
 
-            {/* Right Column: Hovered User Details */}
+            {/* Hovered User Details */}
             <Box sx={{ width: "60%", padding: "15px" }}>
               {hoveredResult ? (
                 <>
                   <Avatar
                     sx={{
                       bgcolor: "#7D9B76",
-                      width: "60px",
-                      height: "60px",
-                      fontSize: "24px",
-                      marginBottom: "16px",
+                      width: 60,
+                      height: 60,
+                      fontSize: 24,
+                      mb: 2,
                     }}
                   >
                     {hoveredResult.fullName.charAt(0)}
@@ -202,17 +182,21 @@ const SearchPopup = ({ open, handleClose, leads }) => {
                     #{hoveredResult._id}
                   </Typography>
                   <Box mt={2}>
-                    <Typography variant="body1">
-                      Phone: {hoveredResult.phoneNumber}
-                    </Typography>
-                    <Typography variant="body1">
-                      Email: {hoveredResult.email}
+                    <Typography>Phone: {hoveredResult.phoneNumber || "N/A"}</Typography>
+                    <Typography>Email: {hoveredResult.email || "N/A"}</Typography>
+                    <Typography>City: {hoveredResult.city || "N/A"}</Typography>
+                    <Typography>Builder: {hoveredResult.builder || "N/A"}</Typography>
+                    <Typography>Budget: {hoveredResult.budget || "N/A"}</Typography>
+                    <Typography>Address: {hoveredResult.address || "N/A"}</Typography>
+                    <Typography>Work Required: {hoveredResult.workRequired || "N/A"}</Typography>
+                    <Typography>
+                      Extra Details: {hoveredResult.details || "N/A"}
                     </Typography>
                   </Box>
                 </>
               ) : (
                 <Typography variant="body2" color="textSecondary">
-                  Hover over a user to see details.
+                  Hover over a lead to see details.
                 </Typography>
               )}
             </Box>
