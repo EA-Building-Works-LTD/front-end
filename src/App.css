@@ -88,7 +88,7 @@
 .main-content {
   flex-grow: 1;
   padding: 24px;
-  background-color: #f6f6f6;
+  background-color: #EAEAEA;
   overflow-y: auto;
 }
 
@@ -122,53 +122,6 @@
   border: none;
 }
 
-/* .mobile-searchbar input {
-  background: transparent !important;
-  border: none;
-  color: white;
-  font-size: 14px;
-  width: 100%;
-  outline: none;
+fieldset.MuiOutlinedInput-notchedOutline {
+  border: none !important;
 }
-
-.mobile-searchbar input::placeholder {
-  color: #d1d1d1;  Lighter placeholder color 
-  opacity: 1;
-} */
-
-/* Responsive Drawer 
-@media (max-width: 768px) {
-  .sidebar-drawer {
-    display: none !important;
-  }
-
-  .main-content {
-    padding: 16px;
-  }
-}
-
-@media (min-width: 769px) {
-  .hamburger-menu {
-    display: none;
-  }
-}
-
- Temporary Drawer (Mobile/Tablet) Overrides 
-@media (max-width: 768px) {
-  .sidebar-paper {
-    height: 100%;
-  }
-
-  .sidebar-logout {
-    margin: 8px;
-  }
-
-  .logout-button {
-    width: 90%;
-    font-size: 14px;
-  }
-
-  .sidebar-listitem {
-    padding-left: 16px;
-  }
-}*/

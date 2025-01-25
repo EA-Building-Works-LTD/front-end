@@ -29,7 +29,6 @@ const Leads = () => {
   const [error, setError] = useState("");
   const [expandedCards, setExpandedCards] = useState({});
 
-
   useEffect(() => {
     const fetchGoogleLeads = async () => {
       const token = localStorage.getItem("token");
@@ -151,7 +150,7 @@ const Leads = () => {
         EA Building Works LTD Leads
       </Typography>
 
-      <Box className="toolbar-section">
+      {/* <Box className="toolbar-section2">
         <Box className="filter-container">
           <FormControl>
             <InputLabel>Builder</InputLabel>
@@ -213,7 +212,7 @@ const Leads = () => {
             </Select>
           </FormControl>
         </Box>
-      </Box>
+      </Box> */}
 
       <Box className="toolbar-section">
         <Box className="search-bar">
@@ -247,7 +246,7 @@ const Leads = () => {
               className="lead-card"
               key={lead._id || `${index}-${lead.timestamp}`}
             >
-              {/* Top Section with Avatar, Name, and Contact */}
+              {/* Top Section with Avatar and Name */}
               <Box className="lead-card-header">
                 <Avatar className="lead-avatar">
                   {lead.fullName?.[0] || "N"}
@@ -257,36 +256,9 @@ const Leads = () => {
                     {lead.fullName || "N/A"}
                   </Typography>
                 </Box>
-
-                <Box className="lead-actions">
-                  {/* Email Icon - Links to "mailto" */}
-                  <IconButton
-                    component="a"
-                    href={`mailto:${lead.email || ""}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    disabled={!lead.email}
-                  >
-                    <Email />
-                  </IconButton>
-
-                  {/* Phone Icon - Links to "tel" */}
-                  <IconButton
-                    component="a"
-                    href={`tel:${lead.phoneNumber || ""}`}
-                    disabled={!lead.phoneNumber}
-                  >
-                    <Phone />
-                  </IconButton>
-
-                  {/* More Options Icon */}
-                  <IconButton>
-                    <MoreVert />
-                  </IconButton>
-                </Box>
               </Box>
 
-              {/* Bottom Section with Additional Details */}
+              {/* Details Section */}
               <Box className="lead-details">
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Builder</Typography>
@@ -329,6 +301,43 @@ const Leads = () => {
                   <Typography variant="subtitle2">City</Typography>
                   <Typography variant="body2">{lead.city || "N/A"}</Typography>
                 </Box>
+              </Box>
+
+              {/* Bottom Section with Actions */}
+              <Box className="lead-card-footer">
+                <Box className="lead-actions">
+                  <IconButton
+                    component="a"
+                    href={`mailto:${lead.email || ""}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    disabled={!lead.email}
+                  >
+                    <Email />
+                  </IconButton>
+
+                  <IconButton
+                    component="a"
+                    href={`tel:${lead.phoneNumber || ""}`}
+                    disabled={!lead.phoneNumber}
+                  >
+                    <Phone />
+                  </IconButton>
+
+                  <IconButton>
+                    <MoreVert />
+                  </IconButton>
+                </Box>
+                <Button
+                  className="copy-details-button"
+                  onClick={() => {
+                    navigator.clipboard.writeText(
+                      `Name: ${lead.fullName}\nAddress: ${lead.address}\nWork Required: ${lead.workRequired}\nExtra Details: ${lead.details}\nBudget: ${lead.budget}\nCity: ${lead.city}`
+                    );
+                  }}
+                >
+                  Copy Details
+                </Button>
               </Box>
             </Box>
           ))}

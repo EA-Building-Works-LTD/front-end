@@ -1,14 +1,3 @@
-/* Container adjustments */
-.lead-container {
-  display: grid;
-  gap: 16px;
-  margin-top: 20px;
-
-  /* Adjust grid for better responsiveness */
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); /* Min width 280px, flexible layout */
-  justify-content: center;
-}
-
 /* Card styles */
 .lead-card {
   width: 100%;
@@ -20,8 +9,22 @@
   transition: transform 0.2s ease, box-shadow 0.2s ease;
   display: flex;
   flex-direction: column;
-  height: auto; /* Ensure proper height */
+  justify-content: space-between; /* Ensure footer stays at the bottom */
+  height: 100%; /* Ensure cards have a consistent height */
+  min-height: 300px; /* Set a minimum height to prevent small cards */
 }
+
+/* Adjust grid alignment for consistent spacing */
+.lead-container {
+  display: grid;
+  gap: 16px;
+  margin-top: 20px;
+
+  /* Adjust grid for better responsiveness */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Min width 280px, flexible layout */
+  justify-items: stretch; /* Ensure cards stretch to fill the grid cells */
+}
+
 
 /* Header styles */
 .lead-card-header {
@@ -40,7 +43,7 @@
   font-size: 8px;
   font-weight: bold;
   margin-right: 16px;
-  flex-shrink: 0; /* Prevent avatar from shrinking */
+  flex-shrink: 0; 
 }
 
 .lead-info {
@@ -55,25 +58,43 @@
   color: #fff;
 }
 
-.lead-email,
-.lead-phone {
-  font-size: 4px;
-  color: #fff;
-  white-space: nowrap; /* Prevent email and phone from wrapping */
-  overflow: hidden;
-  text-overflow: ellipsis; /* Add ellipsis if content overflows */
+/* Footer styles (green bar at the bottom) */
+.lead-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Space between icons and button */
+  padding: 16px;
+  background-color: #7D9B76; /* Green background color */
+  gap: 8px; /* Add spacing between elements */
 }
 
 .lead-actions {
   display: flex;
-  gap: 8px;
+  gap: 10px; /* Space between icons */
   color: white;
-  flex-shrink: 0; /* Prevent icons from shrinking */
 }
 
-/* Ensure icons align properly */
 .lead-actions > .MuiSvgIcon-root {
   font-size: 24px; /* Adjust size of the icons */
+}
+
+.copy-details-button {
+  background-color: #394736 !important;
+  color: #fff !important;
+  font-weight: bold !important;
+  padding: 8px 16px !important;
+  border-radius: 4px !important;
+  text-transform: none !important;
+  font-size: 14px !important;
+  transition: background-color 0.2s ease, color 0.2s ease !important;
+  box-shadow: none !important;
+  border: none !important;
+  white-space: nowrap !important;
+}
+
+.copy-details-button:hover {
+  background-color: #fff !important; /* Slightly darker green for hover effect */
+  color: #7D9B76 !important;
 }
 
 /* Details section */
@@ -88,6 +109,7 @@
 .lead-detail {
   flex: 1 1 50%; /* Default: Two columns within card details */
   padding: 8px 0;
+  
 }
 
 .lead-detail:nth-child(odd) {
@@ -105,45 +127,39 @@
 }
 
 .page-heading {
-  font-size: 36px; /* Larger font size for better emphasis */
-  font-weight: bold; /* Make it stand out */
-  color: #333; /* Neutral dark grey for good readability */
-  text-align: center; /* Center the heading */
-  margin-bottom: 20px; /* Add spacing below the heading */
+  font-size: 36px !important; /* Larger font size for better emphasis */
+  font-weight: bold !important; /* Make it stand out */
+  color: #333 !important; /* Neutral dark grey for good readability */
+  text-align: center !important; /* Center the heading */
+  margin-bottom: 20px !important; /* Add spacing below the heading */
   margin-top: 40px !important; /* Optional spacing above the heading */
-  text-transform: capitalize; /* Capitalize the first letter of each word */
-  line-height: 1.2; /* Slightly reduce line height for tighter appearance */
+  text-transform: capitalize !important; /* Capitalize the first letter of each word */
+  line-height: 1.2 !important; /* Slightly reduce line height for tighter appearance */
 }
-
 
 /* Top Section */
 .toolbar-section {
+  display: flex;
+}
+
+.toolbar-section2 {
   display: flex;
   flex-direction: column;
   gap: 16px;
   margin: 30px 16px 20px 16px; /* Add spacing to the top section */
   padding: 16px;
-  background-color: #7D9B76; /* Optional: Add a background color to differentiate the section */
   border-radius: 8px; 
   box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); 
 }
 
 /* Search Bar Styling */
 .toolbar-section .search-bar {
-  width: 100%; /* Make the search bar expand fully */
-  max-width: none; /* Remove the max-width restriction */
+  width: 100%; 
+  max-width: none; 
   background-color: white;
-  border-radius: 55px;
-}
-
-.toolbar-section .search-bar input {
-  width: 100%;
-  padding: 25px 16px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  font-size: 16px; /* Increase font size for better readability */
-  color: #333;
-  box-sizing: border-box;
+  border-radius: 35px !important;
+  outline: none !important;
+  text-decoration: none;
 }
 
 .toolbar-section .search-bar input::placeholder {
@@ -151,95 +167,14 @@
 }
 
 /* Filter Container */
-.toolbar-section .filter-container {
+.toolbar-section2 .filter-container {
   display: flex;
   flex-wrap: wrap; /* Allow filters to wrap on smaller screens */
   gap: 16px;
 }
 
-.toolbar-section .filter-container .MuiFormControl-root {
+.toolbar-section2 .filter-container .MuiFormControl-root {
   flex: 1; /* Ensure all filters have equal space */
   min-width: 150px;
 }
 
-/* Change the border color for the filter boxes */
-.toolbar-section .filter-container .MuiOutlinedInput-root fieldset {
-  border-color: white; /* Default border color */
-}
-
-.toolbar-section .filter-container .MuiOutlinedInput-root:hover fieldset {
-  border-color: white; /* Border color on hover */
-}
-
-.toolbar-section .filter-container .MuiOutlinedInput-root.Mui-focused fieldset {
-  border-color: white; /* Border color when focused */
-}
-
-/* Change the label color */
-.toolbar-section .filter-container .MuiInputLabel-root {
-  color: white; /* Default label color */
-}
-
-.toolbar-section .filter-container .MuiInputLabel-root.Mui-focused {
-  color: white; /* Label color when focused */
-}
-
-
-/* Responsive Adjustments */
-@media (max-width: 768px) {
-  .toolbar-section {
-    margin: 10px; /* Reduce margin on smaller screens */
-    padding: 12px; /* Adjust padding for smaller screens */
-  }
-
-  .toolbar-section .filter-container {
-    flex-direction: column; /* Stack filters vertically on mobile */
-    gap: 12px;
-  }
-}
-
-/* Responsive styles */
-@media (max-width: 768px) {
-  .lead-container {
-    grid-template-columns: 1fr; /* Stack cards on mobile */
-  }
-
-  .lead-card {
-    max-width: 100%; /* Allow full width on mobile */
-  }
-
-  .lead-card-header {
-    flex-direction: column; /* Stack avatar and details */
-    align-items: flex-start;
-    gap: 8px;
-  }
-
-  .lead-avatar {
-    margin-right: 0; /* Remove margin for better alignment */
-  }
-
-  .lead-info {
-    text-align: left; /* Align text properly on smaller screens */
-  }
-
-  .lead-actions {
-    justify-content: flex-start; /* Align actions to the left */
-    width: 100%;
-  }
-}
-
-@media (max-width: 480px) {
-  .lead-card {
-    padding: 10px; /* Reduce padding for smaller screens */
-    border-radius: 5px; /* Smaller radius for compact design */
-  }
-
-  .lead-name {
-    font-size: 14px; /* Adjust font size for smaller screens */
-  }
-
-  .lead-email,
-  .lead-phone {
-    font-size: 12px; /* Adjust font size for details */
-  }
-}
