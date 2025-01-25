@@ -31,7 +31,7 @@ import Leads from "./components/Leads";
 import Builders from "./components/Builders";
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
-import SearchBar from "./components/SearchBar";
+// import SearchBar from "./components/SearchBar";
 import EarningsPage from "./components/EarningsPage";
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
@@ -106,9 +106,6 @@ function App() {
                   >
                     <MenuIcon />
                   </IconButton>
-                  <Box className="mobile-searchbar">
-                    <SearchBar />
-                  </Box>
                 </Toolbar>
               </AppBar>
             )}
@@ -135,7 +132,6 @@ function App() {
                     onClick={toggleDrawer}
                   />
                 </Toolbar>
-                <SearchBar className="sidebar-searchbar" />
                 <List className="sidebar-list">
                   <ListItemButton
                     component={Link}

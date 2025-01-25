@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import {
   Typography,
   Box,
@@ -13,6 +13,7 @@ import {
   CircularProgress,
   Button,
   Drawer,
+  useMediaQuery,
 } from "@mui/material";
 import { Email, Phone, MoreVert, FilterList } from "@mui/icons-material";
 import axios from "axios";
@@ -30,6 +31,9 @@ const Leads = () => {
   const [error, setError] = useState("");
   const [expandedCards, setExpandedCards] = useState({});
   const [isFilterOpen, setIsFilterOpen] = useState(false);
+
+  const isMobile = useMediaQuery("(max-width:600px)");
+  const leadsContainerRef = useRef(null); // Ref to the leads container
 
   useEffect(() => {
     const fetchGoogleLeads = async () => {
@@ -108,17 +112,27 @@ const Leads = () => {
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
+
+    // Scroll to the top of the leads container when page changes
+    if (leadsContainerRef.current) {
+      leadsContainerRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
+
+    // Scroll to the top of the leads container when rows per page changes
+    if (leadsContainerRef.current) {
+      leadsContainerRef.current.scrollIntoView({ behavior: "smooth" });
+    }
   };
 
-  const toggleExpand = (index) => {
+  const toggleExpand = (field, index) => {
     setExpandedCards((prev) => ({
       ...prev,
-      [index]: !prev[index], // Toggle the expanded state for the card
+      [`${field}-${index}`]: !prev[`${field}-${index}`], // Toggle the expanded state for the specific field
     }));
   };
 
@@ -153,14 +167,6 @@ const Leads = () => {
 
       {/* Toolbar with Search and Filters */}
       <Box className="toolbar-section">
-        <Button
-          variant="outlined"
-          startIcon={<FilterList />}
-          onClick={() => setIsFilterOpen(true)}
-          className="filter-button"
-        >
-          Filters
-        </Button>
         <Box className="search-bar">
           <TextField
             label="Search Leads..."
@@ -170,6 +176,28 @@ const Leads = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </Box>
+      </Box>
+
+      {/* Filter Button and Pagination */}
+      <Box className="filters-pagination-row">
+        <Button
+          variant="outlined"
+          startIcon={<FilterList />}
+          onClick={() => setIsFilterOpen(true)}
+          className="filter-button"
+        >
+          Filters
+        </Button>
+        <TablePagination
+          rowsPerPageOptions={!isMobile ? [10, 25, 50] : []}
+          component="div"
+          count={filteredLeads.length}
+          rowsPerPage={rowsPerPage}
+          page={page}
+          onPageChange={handleChangePage}
+          onRowsPerPageChange={handleChangeRowsPerPage}
+          labelRowsPerPage={!isMobile ? "Rows per page:" : ""}
+        />
       </Box>
 
       {/* Filter Drawer */}
@@ -252,19 +280,8 @@ const Leads = () => {
         </Box>
       </Drawer>
 
-      {/* Pagination */}
-      <TablePagination
-        rowsPerPageOptions={[10, 25, 50]}
-        component="div"
-        count={filteredLeads.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
-
       {/* Cards for Leads */}
-      <Box className="lead-container">
+      <Box ref={leadsContainerRef} className="lead-container">
         {filteredLeads
           .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
           .map((lead, index) => (
@@ -292,25 +309,54 @@ const Leads = () => {
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Address</Typography>
                   <Typography variant="body2">
-                    {lead.address || "N/A"}
+                    {expandedCards[`address-${index}`]
+                      ? lead.address || "N/A"
+                      : truncateText(lead.address || "N/A", 50)}
                   </Typography>
+                  {lead.address && lead.address.length > 50 && (
+                    <Button
+                      size="small"
+                      onClick={() => toggleExpand("address", index)}
+                    >
+                      {expandedCards[`address-${index}`]
+                        ? "Show Less"
+                        : "Show More"}
+                    </Button>
+                  )}
                 </Box>
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Work Required</Typography>
                   <Typography variant="body2">
-                    {lead.workRequired || "N/A"}
+                    {expandedCards[`workRequired-${index}`]
+                      ? lead.workRequired || "N/A"
+                      : truncateText(lead.workRequired || "N/A", 50)}
                   </Typography>
+                  {lead.workRequired && lead.workRequired.length > 50 && (
+                    <Button
+                      size="small"
+                      onClick={() => toggleExpand("workRequired", index)}
+                    >
+                      {expandedCards[`workRequired-${index}`]
+                        ? "Show Less"
+                        : "Show More"}
+                    </Button>
+                  )}
                 </Box>
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Extra Details</Typography>
                   <Typography variant="body2">
-                    {expandedCards[index]
+                    {expandedCards[`details-${index}`]
                       ? lead.details || "N/A"
                       : truncateText(lead.details || "N/A", 50)}
                   </Typography>
                   {lead.details && lead.details.length > 50 && (
-                    <Button size="small" onClick={() => toggleExpand(index)}>
-                      {expandedCards[index] ? "Show Less" : "Show More"}
+                    <Button
+                      size="small"
+                      onClick={() => toggleExpand("details", index)}
+                    >
+                      {expandedCards[`details-${index}`]
+                        ? "Show Less"
+                        : "Show More"}
                     </Button>
                   )}
                 </Box>
@@ -361,6 +407,17 @@ const Leads = () => {
             </Box>
           ))}
       </Box>
+
+      <TablePagination
+        rowsPerPageOptions={!isMobile ? [10, 25, 50] : []}
+        component="div"
+        count={filteredLeads.length}
+        rowsPerPage={rowsPerPage}
+        page={page}
+        onPageChange={handleChangePage}
+        onRowsPerPageChange={handleChangeRowsPerPage}
+        labelRowsPerPage={!isMobile ? "Rows per page:" : ""}
+      />
     </Box>
   );
 };
