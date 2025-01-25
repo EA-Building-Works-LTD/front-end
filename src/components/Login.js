@@ -150,7 +150,7 @@ const Login = ({ setUser }) => {
             </Typography>
 
             <TextField
-              label="Email"
+              label="Username"
               fullWidth
               margin="normal"
               value={credentials.username}
