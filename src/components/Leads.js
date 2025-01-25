@@ -12,8 +12,9 @@ import {
   TablePagination,
   CircularProgress,
   Button,
+  Drawer,
 } from "@mui/material";
-import { Email, Phone, MoreVert } from "@mui/icons-material";
+import { Email, Phone, MoreVert, FilterList } from "@mui/icons-material";
 import axios from "axios";
 import "./Leads.css";
 
@@ -28,6 +29,7 @@ const Leads = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [expandedCards, setExpandedCards] = useState({});
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
 
   useEffect(() => {
     const fetchGoogleLeads = async () => {
@@ -145,14 +147,42 @@ const Leads = () => {
 
   return (
     <Box>
-      {/* Toolbar for Search and Filters */}
       <Typography variant="h3" className="page-heading">
         EA Building Works LTD Leads
       </Typography>
 
-      {/* <Box className="toolbar-section2">
-        <Box className="filter-container">
-          <FormControl>
+      {/* Toolbar with Search and Filters */}
+      <Box className="toolbar-section">
+        <Button
+          variant="outlined"
+          startIcon={<FilterList />}
+          onClick={() => setIsFilterOpen(true)}
+          className="filter-button"
+        >
+          Filters
+        </Button>
+        <Box className="search-bar">
+          <TextField
+            label="Search Leads..."
+            variant="outlined"
+            fullWidth
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </Box>
+      </Box>
+
+      {/* Filter Drawer */}
+      <Drawer
+        anchor="right"
+        open={isFilterOpen}
+        onClose={() => setIsFilterOpen(false)}
+      >
+        <Box className="filter-drawer">
+          <Typography variant="h6" className="filter-title">
+            Filter By:
+          </Typography>
+          <FormControl fullWidth margin="normal">
             <InputLabel>Builder</InputLabel>
             <Select
               value={filters.builder}
@@ -169,7 +199,7 @@ const Leads = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl>
+          <FormControl fullWidth margin="normal">
             <InputLabel>City</InputLabel>
             <Select
               value={filters.city}
@@ -184,7 +214,7 @@ const Leads = () => {
               )}
             </Select>
           </FormControl>
-          <FormControl>
+          <FormControl fullWidth margin="normal">
             <InputLabel>Budget</InputLabel>
             <Select
               value={filters.budget}
@@ -201,7 +231,7 @@ const Leads = () => {
               ))}
             </Select>
           </FormControl>
-          <FormControl>
+          <FormControl fullWidth margin="normal">
             <InputLabel>Sort Order</InputLabel>
             <Select
               value={sortOrder}
@@ -211,20 +241,16 @@ const Leads = () => {
               <MenuItem value="desc">Newest First</MenuItem>
             </Select>
           </FormControl>
-        </Box>
-      </Box> */}
-
-      <Box className="toolbar-section">
-        <Box className="search-bar">
-          <TextField
-            label="Search Leads..."
-            variant="outlined"
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => setIsFilterOpen(false)}
             fullWidth
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
+          >
+            Apply Filters
+          </Button>
         </Box>
-      </Box>
+      </Drawer>
 
       {/* Pagination */}
       <TablePagination
@@ -246,7 +272,6 @@ const Leads = () => {
               className="lead-card"
               key={lead._id || `${index}-${lead.timestamp}`}
             >
-              {/* Top Section with Avatar and Name */}
               <Box className="lead-card-header">
                 <Avatar className="lead-avatar">
                   {lead.fullName?.[0] || "N"}
@@ -257,8 +282,6 @@ const Leads = () => {
                   </Typography>
                 </Box>
               </Box>
-
-              {/* Details Section */}
               <Box className="lead-details">
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Builder</Typography>
@@ -302,8 +325,6 @@ const Leads = () => {
                   <Typography variant="body2">{lead.city || "N/A"}</Typography>
                 </Box>
               </Box>
-
-              {/* Bottom Section with Actions */}
               <Box className="lead-card-footer">
                 <Box className="lead-actions">
                   <IconButton
@@ -315,7 +336,6 @@ const Leads = () => {
                   >
                     <Email />
                   </IconButton>
-
                   <IconButton
                     component="a"
                     href={`tel:${lead.phoneNumber || ""}`}
@@ -323,7 +343,6 @@ const Leads = () => {
                   >
                     <Phone />
                   </IconButton>
-
                   <IconButton>
                     <MoreVert />
                   </IconButton>
@@ -342,17 +361,6 @@ const Leads = () => {
             </Box>
           ))}
       </Box>
-
-      {/* Pagination */}
-      <TablePagination
-        rowsPerPageOptions={[10, 25, 50]}
-        component="div"
-        count={filteredLeads.length}
-        rowsPerPage={rowsPerPage}
-        page={page}
-        onPageChange={handleChangePage}
-        onRowsPerPageChange={handleChangeRowsPerPage}
-      />
     </Box>
   );
 };

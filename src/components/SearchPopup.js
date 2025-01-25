@@ -18,17 +18,20 @@ const SearchPopup = ({ open, handleClose, leads }) => {
   const [hoveredResult, setHoveredResult] = useState(null);
 
   const searchInputRef = useRef(null);
-  
 
   // Automatically focus on the input when the modal opens
   useEffect(() => {
-    if (open) searchInputRef.current?.focus();
+    if (open) {
+      searchInputRef.current?.focus();
+    }
   }, [open]);
 
   // Load recent searches from localStorage on mount
   useEffect(() => {
     const savedSearches = localStorage.getItem("recentSearches");
-    if (savedSearches) setRecentSearches(JSON.parse(savedSearches));
+    if (savedSearches) {
+      setRecentSearches(JSON.parse(savedSearches));
+    }
   }, []);
 
   // Save recent searches to localStorage when they change
@@ -41,11 +44,11 @@ const SearchPopup = ({ open, handleClose, leads }) => {
     setSearchQuery(query);
 
     if (query) {
-      const filteredResults = leads.filter(
-        (lead) =>
-          (lead.fullName || "").toLowerCase().includes(query) ||
-          (lead.city || "").toLowerCase().includes(query) ||
-          (lead.builder || "").toLowerCase().includes(query)
+      // Make sure we're filtering on the correct fields that actually exist in leads
+      const filteredResults = leads.filter((lead) =>
+        (lead.fullName || "").toLowerCase().includes(query) ||
+        (lead.city || "").toLowerCase().includes(query) ||
+        (lead.builder || "").toLowerCase().includes(query)
       );
       setResults(filteredResults);
     } else {
@@ -57,7 +60,7 @@ const SearchPopup = ({ open, handleClose, leads }) => {
   const handleResultClick = (result) => {
     setHoveredResult(result);
 
-    // Add to recent searches
+    // Add to recent searches (limit to 3)
     setRecentSearches((prev) => {
       const filtered = prev.filter((item) => item._id !== result._id);
       return [result, ...filtered].slice(0, 3);
@@ -118,7 +121,7 @@ const SearchPopup = ({ open, handleClose, leads }) => {
                   onClick={() => handleResultClick(recent)}
                 >
                   <Avatar sx={{ bgcolor: "#7D9B76" }}>
-                    {recent.fullName.charAt(0)}
+                    {recent.fullName?.charAt(0) || "?"}
                   </Avatar>
                   <ListItemText sx={{ ml: 1 }} primary={recent.fullName} />
                 </ListItem>
@@ -131,7 +134,6 @@ const SearchPopup = ({ open, handleClose, leads }) => {
           </List>
         </Box>
 
-        {/* Divider */}
         <Divider sx={{ my: 2 }} />
 
         {/* Search Results */}
@@ -149,13 +151,22 @@ const SearchPopup = ({ open, handleClose, leads }) => {
                       onMouseEnter={() => setHoveredResult(result)}
                     >
                       <Avatar sx={{ bgcolor: "#7D9B76", mr: 1 }}>
-                        {result.fullName.charAt(0)}
+                        {result.fullName?.charAt(0) || "?"}
                       </Avatar>
-                      <ListItemText primary={result.fullName} secondary={`${result.city} - ${result.builder}`} />
+                      <ListItemText
+                        primary={result.fullName}
+                        secondary={`${result.city || "N/A"} - ${
+                          result.builder || "N/A"
+                        }`}
+                      />
                     </ListItem>
                   ))
                 ) : (
-                  <Typography variant="body2" sx={{ p: 2 }} color="textSecondary">
+                  <Typography
+                    variant="body2"
+                    sx={{ p: 2 }}
+                    color="textSecondary"
+                  >
                     No results found.
                   </Typography>
                 )}
@@ -175,20 +186,30 @@ const SearchPopup = ({ open, handleClose, leads }) => {
                       mb: 2,
                     }}
                   >
-                    {hoveredResult.fullName.charAt(0)}
+                    {hoveredResult.fullName?.charAt(0) || "?"}
                   </Avatar>
                   <Typography variant="h6">{hoveredResult.fullName}</Typography>
                   <Typography variant="body2" color="textSecondary">
                     #{hoveredResult._id}
                   </Typography>
                   <Box mt={2}>
-                    <Typography>Phone: {hoveredResult.phoneNumber || "N/A"}</Typography>
+                    <Typography>
+                      Phone: {hoveredResult.phoneNumber || "N/A"}
+                    </Typography>
                     <Typography>Email: {hoveredResult.email || "N/A"}</Typography>
                     <Typography>City: {hoveredResult.city || "N/A"}</Typography>
-                    <Typography>Builder: {hoveredResult.builder || "N/A"}</Typography>
-                    <Typography>Budget: {hoveredResult.budget || "N/A"}</Typography>
-                    <Typography>Address: {hoveredResult.address || "N/A"}</Typography>
-                    <Typography>Work Required: {hoveredResult.workRequired || "N/A"}</Typography>
+                    <Typography>
+                      Builder: {hoveredResult.builder || "N/A"}
+                    </Typography>
+                    <Typography>
+                      Budget: {hoveredResult.budget || "N/A"}
+                    </Typography>
+                    <Typography>
+                      Address: {hoveredResult.address || "N/A"}
+                    </Typography>
+                    <Typography>
+                      Work Required: {hoveredResult.workRequired || "N/A"}
+                    </Typography>
                     <Typography>
                       Extra Details: {hoveredResult.details || "N/A"}
                     </Typography>

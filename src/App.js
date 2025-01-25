@@ -19,7 +19,9 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { jwtDecode } from "jwt-decode";
+// IMPORTANT: import jwtDecode correctly
+import {jwtDecode} from "jwt-decode";
+
 import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
 import theme from "./theme";
@@ -194,7 +196,7 @@ function App() {
               component="main"
               className="main-content"
               sx={{
-                marginLeft: isDesktop && user ? `${drawerWidth}px` : 0,
+                marginLeft: isDesktop && user ? `${drawerWidth}px` : 0, // FIXED HERE
                 paddingTop: user && !isDesktop ? "64px" : "0",
               }}
             >

@@ -11,10 +11,8 @@ export const LeadsProvider = ({ children }) => {
     const token = localStorage.getItem("token");
     if (!token) return;
 
-    fetch("/api/leads", {
-      headers: {
-        "Authorization": `Bearer ${token}`
-      },
+    fetch(`${process.env.REACT_APP_API_URL}/api/google-leads`, {
+      headers: { Authorization: `Bearer ${token}` },
     })
       .then((res) => {
         if (!res.ok) {
@@ -22,7 +20,13 @@ export const LeadsProvider = ({ children }) => {
         }
         return res.json();
       })
-      .then((data) => setLeads(data || []))
+      .then((data) => {
+        console.log("Fetched leads: ", data); // <-- Log to see actual data shape
+        setLeads(data || []);
+      })
+      .catch((err) => {
+        console.error("Fetch error: ", err);
+      });
   }, []);
 
   return (

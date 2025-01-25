@@ -1,8 +1,9 @@
 import React, { useState } from "react";
 import { TextField, Box, InputAdornment } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+
 import SearchPopup from "./SearchPopup";
 import { useLeads } from "./LeadsContext"; // Import the context hook
-import SearchIcon from "@mui/icons-material/Search";
 
 const SearchBar = () => {
   const { leads } = useLeads(); // Access leads from context
@@ -49,7 +50,11 @@ const SearchBar = () => {
           },
         }}
       />
-      <SearchPopup open={isPopupOpen} handleClose={handleClosePopup} leads={leads} />
+      <SearchPopup
+        open={isPopupOpen}
+        handleClose={handleClosePopup}
+        leads={leads}
+      />
     </Box>
   );
 };

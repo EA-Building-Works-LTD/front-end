@@ -41,9 +41,10 @@ const Login = ({ setUser }) => {
 
   const handleLogin = async () => {
     try {
+      const sanitizedUsername = credentials.username.toLowerCase(); // Convert username to lowercase
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/login`,
-        credentials
+        { ...credentials, username: sanitizedUsername } // Send the sanitized username
       );
       const { token, role } = response.data;
 
@@ -117,11 +118,9 @@ const Login = ({ setUser }) => {
                 },
               }}
             />
-
             <Box sx={{ marginBottom: "16px" }}>
               <LoginIcon sx={{ fontSize: 40, color: "text.secondary" }} />
             </Box>
-
             <Typography
               variant="h5"
               fontWeight="bold"
@@ -156,7 +155,12 @@ const Login = ({ setUser }) => {
               margin="normal"
               value={credentials.username}
               onChange={(e) =>
-                setCredentials({ ...credentials, username: e.target.value })
+                setCredentials({
+                  ...credentials,
+                  username:
+                    e.target.value.trim().charAt(0).toLowerCase() +
+                    e.target.value.slice(1), // Ensure the first letter is lowercase
+                })
               }
               sx={{
                 "@media (max-width: 480px)": {
@@ -164,7 +168,6 @@ const Login = ({ setUser }) => {
                 },
               }}
             />
-
             <TextField
               label="Password"
               type="password"
@@ -180,7 +183,6 @@ const Login = ({ setUser }) => {
                 },
               }}
             />
-
             <Button
               variant="contained"
               fullWidth
@@ -200,7 +202,6 @@ const Login = ({ setUser }) => {
             >
               Login
             </Button>
-
             {error && (
               <Typography
                 variant="body2"
