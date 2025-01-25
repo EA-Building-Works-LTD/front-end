@@ -5,7 +5,6 @@ import {
   Drawer,
   List,
   ListItemIcon,
-  ListItemText,
   Toolbar,
   ListItemButton,
   Button,
@@ -19,8 +18,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
 import LogoutIcon from "@mui/icons-material/Logout";
-// IMPORTANT: import jwtDecode correctly
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
 import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
@@ -31,10 +29,10 @@ import Leads from "./components/Leads";
 import Builders from "./components/Builders";
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
-// import SearchBar from "./components/SearchBar";
 import EarningsPage from "./components/EarningsPage";
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
+import BoldListItemText from "./components/BoldListItemText";
 
 const drawerWidth = 230;
 
@@ -142,7 +140,9 @@ function App() {
                     <ListItemIcon className="sidebar-listicon">
                       <DashboardIcon />
                     </ListItemIcon>
-                    <ListItemText primary="Dashboard" />
+                    <BoldListItemText 
+                      primary="Dashboard"
+                    />
                   </ListItemButton>
 
                   {user?.role === "admin" && (
@@ -155,7 +155,7 @@ function App() {
                       <ListItemIcon className="sidebar-listicon">
                         <PeopleIcon />
                       </ListItemIcon>
-                      <ListItemText primary="Leads" />
+                      <BoldListItemText  primary="Leads" />
                     </ListItemButton>
                   )}
 
@@ -169,7 +169,7 @@ function App() {
                       <ListItemIcon className="sidebar-listicon">
                         <BuildIcon />
                       </ListItemIcon>
-                      <ListItemText primary="Builders" />
+                      <BoldListItemText  primary="Builders" />
                     </ListItemButton>
                   )}
                 </List>
@@ -192,7 +192,7 @@ function App() {
               component="main"
               className="main-content"
               sx={{
-                marginLeft: isDesktop && user ? `${drawerWidth}px` : 0, // FIXED HERE
+                marginLeft: isDesktop && user ? `${drawerWidth}px` : 0,
                 paddingTop: user && !isDesktop ? "64px" : "0",
               }}
             >
