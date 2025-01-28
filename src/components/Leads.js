@@ -37,11 +37,11 @@ const Leads = () => {
   const [expandedCards, setExpandedCards] = useState({});
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // For MoreVert menu
+  // For "More Vert" menu
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
 
-  // For assigning builder & status
+  // For dialog to assign builder/status
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editBuilder, setEditBuilder] = useState("");
   const [editStatus, setEditStatus] = useState("");
@@ -49,24 +49,25 @@ const Leads = () => {
   const isMobile = useMediaQuery("(max-width:600px)");
   const leadsContainerRef = useRef(null);
 
-  // Fetch leads on mount
+  // On mount, fetch leads
   useEffect(() => {
     const fetchGoogleLeads = async () => {
       setLoading(true);
       const token = localStorage.getItem("token");
       try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/api/google-leads`,
-          {
-            headers: {
-              "Content-Type": "application/json",
-              Authorization: `Bearer ${token}`,
-            },
-          }
-        );
+        const url = `${process.env.REACT_APP_API_URL}/api/google-leads`;
+        console.log("GET =>", url);
+        const response = await axios.get(url, {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        // Check what came back
         console.log("Raw fetched leads =>", response.data);
 
-        // Guarantee each lead has an _id
+        // Guarantee each lead has _id
         const leadsWithId = response.data.map((lead, i) => ({
           ...lead,
           _id: lead._id || `googleSheet-${i}`,
@@ -75,8 +76,8 @@ const Leads = () => {
 
         setLeads(leadsWithId);
         setFilteredLeads(leadsWithId);
-      } catch (error) {
-        console.error("Error fetching Google leads:", error);
+      } catch (err) {
+        console.error("Error fetching Google leads:", err);
         setError("Failed to fetch leads");
       } finally {
         setLoading(false);
@@ -85,7 +86,7 @@ const Leads = () => {
     fetchGoogleLeads();
   }, []);
 
-  // Reset page if filtered list shrinks
+  // Reset page if filtered leads are fewer
   useEffect(() => {
     const maxPage = Math.floor(filteredLeads.length / rowsPerPage);
     if (page > maxPage) {
@@ -119,19 +120,19 @@ const Leads = () => {
         return matchesSearch && matchesBuilder && matchesCity && matchesBudget;
       });
 
-      const sortedFiltered = [...filtered].sort((a, b) =>
+      const sorted = [...filtered].sort((a, b) =>
         sortOrder === "asc"
           ? new Date(a.timestamp) - new Date(b.timestamp)
           : new Date(b.timestamp) - new Date(a.timestamp)
       );
 
-      setFilteredLeads(sortedFiltered);
+      setFilteredLeads(sorted);
     };
 
     applyFilters();
   }, [leads, searchQuery, filters, sortOrder]);
 
-  // Handle pagination
+  // Pagination handlers
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
     if (leadsContainerRef.current) {
@@ -147,7 +148,7 @@ const Leads = () => {
     }
   };
 
-  // Expand/Collapse text fields
+  // Expand/Collapse details
   const toggleExpand = (field, index) => {
     setExpandedCards((prev) => ({
       ...prev,
@@ -155,23 +156,22 @@ const Leads = () => {
     }));
   };
 
-  const truncateText = (text = "", limit) => {
+  const truncateText = (text = "", limit = 50) => {
     return text.length > limit ? text.substring(0, limit) + "..." : text;
   };
 
-  // Handle opening MoreVert
+  // MoreVert menu
   const handleMenuClick = (event, lead) => {
     console.log("Clicked lead =>", lead);
     setAnchorEl(event.currentTarget);
     setSelectedLead(lead);
   };
 
-  // Close MoreVert menu
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
 
-  // Open the edit builder/status dialog
+  // Open dialog to edit builder/status
   const handleOpenEditDialog = () => {
     setIsEditDialogOpen(true);
     if (selectedLead) {
@@ -181,17 +181,18 @@ const Leads = () => {
     handleMenuClose();
   };
 
-  // Close edit dialog
+  // Close dialog
   const handleCloseEditDialog = () => {
     setIsEditDialogOpen(false);
   };
 
-  // Save the updated builder/status
+  // Save builder/status
   const handleSaveEdit = async () => {
     if (!selectedLead || !selectedLead._id) {
       console.error("No selectedLead or _id is undefined:", selectedLead);
       return;
     }
+
     try {
       const token = localStorage.getItem("token");
       const putUrl = `${process.env.REACT_APP_API_URL}/api/google-leads/${selectedLead._id}`;
@@ -209,24 +210,24 @@ const Leads = () => {
       );
 
       // Update local state
-      setLeads((prevLeads) =>
-        prevLeads.map((lead) =>
-          lead._id === selectedLead._id
-            ? { ...lead, builder: editBuilder, status: editStatus }
-            : lead
+      setLeads((prev) =>
+        prev.map((ld) =>
+          ld._id === selectedLead._id
+            ? { ...ld, builder: editBuilder, status: editStatus }
+            : ld
         )
       );
-      setFilteredLeads((prevLeads) =>
-        prevLeads.map((lead) =>
-          lead._id === selectedLead._id
-            ? { ...lead, builder: editBuilder, status: editStatus }
-            : lead
+      setFilteredLeads((prev) =>
+        prev.map((ld) =>
+          ld._id === selectedLead._id
+            ? { ...ld, builder: editBuilder, status: editStatus }
+            : ld
         )
       );
 
-      handleCloseEditDialog();
-    } catch (error) {
-      console.error("Error updating lead:", error);
+      setIsEditDialogOpen(false);
+    } catch (err) {
+      console.error("Error updating lead:", err);
       setError("Error updating lead. Check console/server logs.");
     }
   };
@@ -247,10 +248,11 @@ const Leads = () => {
     );
   }
 
+  // For the "assign builder" dropdown
   const uniqueBuilders = Array.from(
     new Set(leads.map((lead) => lead.builder || "N/A"))
   );
-
+  // Some sample statuses
   const availableStatuses = ["Pending", "In Progress", "Completed", "Closed"];
 
   return (
@@ -259,7 +261,7 @@ const Leads = () => {
         EA Building Works LTD Leads
       </Typography>
 
-      {/* Toolbar: Search */}
+      {/* Search bar */}
       <Box className="toolbar-section">
         <Box className="search-bar">
           <TextField
@@ -272,7 +274,7 @@ const Leads = () => {
         </Box>
       </Box>
 
-      {/* Filter Button / Pagination */}
+      {/* Filters & Pagination */}
       <Box className="filters-pagination-row">
         <Button
           variant="outlined"
@@ -294,7 +296,7 @@ const Leads = () => {
         />
       </Box>
 
-      {/* Filter Drawer */}
+      {/* Filter drawer */}
       <Drawer
         anchor="right"
         open={isFilterOpen}
@@ -325,13 +327,13 @@ const Leads = () => {
               value={filters.city}
               onChange={(e) => setFilters({ ...filters, city: e.target.value })}
             >
-              {Array.from(new Set(leads.map((l) => l.city || "N/A"))).map(
-                (city, index) => (
-                  <MenuItem key={`city-${index}`} value={city}>
-                    {city}
-                  </MenuItem>
-                )
-              )}
+              {Array.from(
+                new Set(leads.map((l) => l.city || "N/A"))
+              ).map((city, index) => (
+                <MenuItem key={`city-${index}`} value={city}>
+                  {city}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
           <FormControl fullWidth margin="normal">
@@ -342,13 +344,13 @@ const Leads = () => {
                 setFilters({ ...filters, budget: e.target.value })
               }
             >
-              {Array.from(new Set(leads.map((l) => l.budget || "N/A"))).map(
-                (budget, index) => (
-                  <MenuItem key={`budget-${index}`} value={budget}>
-                    {budget}
-                  </MenuItem>
-                )
-              )}
+              {Array.from(
+                new Set(leads.map((l) => l.budget || "N/A"))
+              ).map((budget, index) => (
+                <MenuItem key={`budget-${index}`} value={budget}>
+                  {budget}
+                </MenuItem>
+              ))}
             </Select>
           </FormControl>
           <FormControl fullWidth margin="normal">
@@ -372,7 +374,7 @@ const Leads = () => {
         </Box>
       </Drawer>
 
-      {/* Leads List */}
+      {/* Lead cards */}
       <Box ref={leadsContainerRef} className="lead-container">
         {filteredLeads
           .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -399,7 +401,6 @@ const Leads = () => {
                     {lead.builder || "N/A"}
                   </Typography>
                 </Box>
-                {/* Address */}
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Address</Typography>
                   <Typography variant="body2">
@@ -418,7 +419,6 @@ const Leads = () => {
                     </Button>
                   )}
                 </Box>
-                {/* Work Required */}
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Work Required</Typography>
                   <Typography variant="body2">
@@ -437,7 +437,6 @@ const Leads = () => {
                     </Button>
                   )}
                 </Box>
-                {/* Extra Details */}
                 <Box className="lead-detail">
                   <Typography variant="subtitle2">Extra Details</Typography>
                   <Typography variant="body2">
@@ -492,7 +491,6 @@ const Leads = () => {
                   >
                     <Phone />
                   </IconButton>
-                  {/* MoreVert */}
                   <IconButton onClick={(e) => handleMenuClick(e, lead)}>
                     <MoreVert />
                   </IconButton>
@@ -523,7 +521,7 @@ const Leads = () => {
         labelRowsPerPage={!isMobile ? "Rows per page:" : ""}
       />
 
-      {/* Menu for "Assign Builder / Change Status" */}
+      {/* MoreVert Menu => Assign Builder/Status */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -534,7 +532,7 @@ const Leads = () => {
         </MenuItem>
       </Menu>
 
-      {/* Dialog */}
+      {/* Dialog to edit builder/status */}
       <Dialog
         open={isEditDialogOpen}
         onClose={handleCloseEditDialog}
