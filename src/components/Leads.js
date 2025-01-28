@@ -37,11 +37,11 @@ const Leads = () => {
   const [expandedCards, setExpandedCards] = useState({});
   const [isFilterOpen, setIsFilterOpen] = useState(false);
 
-  // For "More Vert" menu
+  // For handling MoreVert menu
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedLead, setSelectedLead] = useState(null);
 
-  // For dialog to assign builder/status
+  // For handling edit (assign builder & change status)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [editBuilder, setEditBuilder] = useState("");
   const [editStatus, setEditStatus] = useState("");
@@ -49,35 +49,25 @@ const Leads = () => {
   const isMobile = useMediaQuery("(max-width:600px)");
   const leadsContainerRef = useRef(null);
 
-  // On mount, fetch leads
+  // Fetch leads from your backend (which must return _id for each lead)
   useEffect(() => {
     const fetchGoogleLeads = async () => {
-      setLoading(true);
       const token = localStorage.getItem("token");
       try {
-        const url = `${process.env.REACT_APP_API_URL}/api/google-leads`;
-        console.log("GET =>", url);
-        const response = await axios.get(url, {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-        });
-
-        // Check what came back
-        console.log("Raw fetched leads =>", response.data);
-
-        // Guarantee each lead has _id
-        const leadsWithId = response.data.map((lead, i) => ({
-          ...lead,
-          _id: lead._id || `googleSheet-${i}`,
-        }));
-        console.log("Leads with guaranteed _id =>", leadsWithId);
-
-        setLeads(leadsWithId);
-        setFilteredLeads(leadsWithId);
-      } catch (err) {
-        console.error("Error fetching Google leads:", err);
+        const response = await axios.get(
+          `${process.env.REACT_APP_API_URL}/api/google-leads`,
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log("Fetched google leads (first 3):", response.data.slice(0, 3));
+        setLeads(response.data || []);
+        setFilteredLeads(response.data || []);
+      } catch (error) {
+        console.error("Error fetching Google leads:", error);
         setError("Failed to fetch leads");
       } finally {
         setLoading(false);
@@ -86,7 +76,7 @@ const Leads = () => {
     fetchGoogleLeads();
   }, []);
 
-  // Reset page if filtered leads are fewer
+  // Reset page if filtered list shrinks
   useEffect(() => {
     const maxPage = Math.floor(filteredLeads.length / rowsPerPage);
     if (page > maxPage) {
@@ -120,19 +110,19 @@ const Leads = () => {
         return matchesSearch && matchesBuilder && matchesCity && matchesBudget;
       });
 
-      const sorted = [...filtered].sort((a, b) =>
+      const sortedFiltered = [...filtered].sort((a, b) =>
         sortOrder === "asc"
           ? new Date(a.timestamp) - new Date(b.timestamp)
           : new Date(b.timestamp) - new Date(a.timestamp)
       );
 
-      setFilteredLeads(sorted);
+      setFilteredLeads(sortedFiltered);
     };
 
     applyFilters();
   }, [leads, searchQuery, filters, sortOrder]);
 
-  // Pagination handlers
+  // Handle pagination
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
     if (leadsContainerRef.current) {
@@ -148,7 +138,7 @@ const Leads = () => {
     }
   };
 
-  // Expand/Collapse details
+  // Expand/Collapse text fields
   const toggleExpand = (field, index) => {
     setExpandedCards((prev) => ({
       ...prev,
@@ -156,22 +146,23 @@ const Leads = () => {
     }));
   };
 
-  const truncateText = (text = "", limit = 50) => {
+  const truncateText = (text = "", limit) => {
     return text.length > limit ? text.substring(0, limit) + "..." : text;
   };
 
-  // MoreVert menu
+  // Handle opening the MoreVert menu
   const handleMenuClick = (event, lead) => {
-    console.log("Clicked lead =>", lead);
+    console.log("Clicked lead =>", lead); // Debug: check lead._id
     setAnchorEl(event.currentTarget);
     setSelectedLead(lead);
   };
 
+  // Handle closing the MoreVert menu (do NOT reset selectedLead)
   const handleMenuClose = () => {
     setAnchorEl(null);
   };
 
-  // Open dialog to edit builder/status
+  // Open the dialog to edit builder & status
   const handleOpenEditDialog = () => {
     setIsEditDialogOpen(true);
     if (selectedLead) {
@@ -181,25 +172,22 @@ const Leads = () => {
     handleMenuClose();
   };
 
-  // Close dialog
+  // Close edit dialog
   const handleCloseEditDialog = () => {
     setIsEditDialogOpen(false);
   };
 
-  // Save builder/status
+  // Save the updated builder/status to the server
   const handleSaveEdit = async () => {
     if (!selectedLead || !selectedLead._id) {
-      console.error("No selectedLead or _id is undefined:", selectedLead);
+      console.error("No selectedLead or _id is undefined.");
       return;
     }
 
     try {
       const token = localStorage.getItem("token");
-      const putUrl = `${process.env.REACT_APP_API_URL}/api/google-leads/${selectedLead._id}`;
-      console.log("PUT URL =>", putUrl);
-
       await axios.put(
-        putUrl,
+        `${process.env.REACT_APP_API_URL}/api/google-leads/${selectedLead._id}`,
         { builder: editBuilder, status: editStatus },
         {
           headers: {
@@ -209,25 +197,26 @@ const Leads = () => {
         }
       );
 
-      // Update local state
-      setLeads((prev) =>
-        prev.map((ld) =>
-          ld._id === selectedLead._id
-            ? { ...ld, builder: editBuilder, status: editStatus }
-            : ld
-        )
-      );
-      setFilteredLeads((prev) =>
-        prev.map((ld) =>
-          ld._id === selectedLead._id
-            ? { ...ld, builder: editBuilder, status: editStatus }
-            : ld
+      // Update local state so we see the change immediately
+      setLeads((prevLeads) =>
+        prevLeads.map((lead) =>
+          lead._id === selectedLead._id
+            ? { ...lead, builder: editBuilder, status: editStatus }
+            : lead
         )
       );
 
-      setIsEditDialogOpen(false);
-    } catch (err) {
-      console.error("Error updating lead:", err);
+      setFilteredLeads((prevLeads) =>
+        prevLeads.map((lead) =>
+          lead._id === selectedLead._id
+            ? { ...lead, builder: editBuilder, status: editStatus }
+            : lead
+        )
+      );
+
+      handleCloseEditDialog();
+    } catch (error) {
+      console.error("Error updating lead:", error);
       setError("Error updating lead. Check console/server logs.");
     }
   };
@@ -248,11 +237,12 @@ const Leads = () => {
     );
   }
 
-  // For the "assign builder" dropdown
+  // We'll gather unique builders for the filter as well as for the "assign builder" dialog.
   const uniqueBuilders = Array.from(
     new Set(leads.map((lead) => lead.builder || "N/A"))
   );
-  // Some sample statuses
+
+  // Define statuses
   const availableStatuses = ["Pending", "In Progress", "Completed", "Closed"];
 
   return (
@@ -261,7 +251,7 @@ const Leads = () => {
         EA Building Works LTD Leads
       </Typography>
 
-      {/* Search bar */}
+      {/* Toolbar with Search and Filters */}
       <Box className="toolbar-section">
         <Box className="search-bar">
           <TextField
@@ -274,7 +264,7 @@ const Leads = () => {
         </Box>
       </Box>
 
-      {/* Filters & Pagination */}
+      {/* Filter Button and Pagination */}
       <Box className="filters-pagination-row">
         <Button
           variant="outlined"
@@ -296,7 +286,7 @@ const Leads = () => {
         />
       </Box>
 
-      {/* Filter drawer */}
+      {/* Filter Drawer */}
       <Drawer
         anchor="right"
         open={isFilterOpen}
@@ -374,7 +364,7 @@ const Leads = () => {
         </Box>
       </Drawer>
 
-      {/* Lead cards */}
+      {/* Cards for Leads */}
       <Box ref={leadsContainerRef} className="lead-container">
         {filteredLeads
           .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -491,6 +481,7 @@ const Leads = () => {
                   >
                     <Phone />
                   </IconButton>
+                  {/* Three dots icon to open the menu */}
                   <IconButton onClick={(e) => handleMenuClick(e, lead)}>
                     <MoreVert />
                   </IconButton>
@@ -521,7 +512,7 @@ const Leads = () => {
         labelRowsPerPage={!isMobile ? "Rows per page:" : ""}
       />
 
-      {/* MoreVert Menu => Assign Builder/Status */}
+      {/* The menu that shows up after clicking MoreVert */}
       <Menu
         anchorEl={anchorEl}
         open={Boolean(anchorEl)}
@@ -532,7 +523,7 @@ const Leads = () => {
         </MenuItem>
       </Menu>
 
-      {/* Dialog to edit builder/status */}
+      {/* Dialog for assigning builder & changing builder status */}
       <Dialog
         open={isEditDialogOpen}
         onClose={handleCloseEditDialog}
