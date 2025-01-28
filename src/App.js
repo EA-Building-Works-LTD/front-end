@@ -30,7 +30,7 @@ import Builders from "./components/Builders";
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
 import EarningsPage from "./components/EarningsPage";
-import { LeadsProvider } from "./components/LeadsContext";
+// import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
 import BoldListItemText from "./components/BoldListItemText";
 
@@ -87,7 +87,7 @@ function App() {
   return (
     <ThemeProvider theme={theme}>
       <UserRoleProvider role={user?.role || "guest"}>
-        <LeadsProvider user={user}>
+        
           <Box className="app-container">
             <CssBaseline />
 
@@ -228,7 +228,7 @@ function App() {
               </Routes>
             </Box>
           </Box>
-        </LeadsProvider>
+       
       </UserRoleProvider>
     </ThemeProvider>
   );
