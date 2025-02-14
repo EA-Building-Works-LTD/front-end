@@ -18,7 +18,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { jwtDecode } from "jwt-decode";
+import { jwtDecode } from "jwt-decode"; // If this works for you
 
 import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
@@ -40,7 +40,7 @@ function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false); // State to manage drawer open/close
-  const isDesktop = useMediaQuery("(min-width:1025px)"); // Media query to detect screen size
+  const isDesktop = useMediaQuery("(min-width:1025px)");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -52,6 +52,7 @@ function App() {
     }
 
     try {
+      // Example decode (adjust if your library differs)
       const { exp } = jwtDecode(token);
       if (exp * 1000 < Date.now()) {
         localStorage.removeItem("token");
@@ -72,8 +73,9 @@ function App() {
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
+    localStorage.removeItem("username"); // If storing builder name
     setUser(null);
-    setDrawerOpen(false); // Close the drawer on logout
+    setDrawerOpen(false); 
   };
 
   const toggleDrawer = () => {
@@ -108,7 +110,7 @@ function App() {
               </AppBar>
             )}
 
-            {/* Sidebar Navigation (conditionally rendered) */}
+            {/* Sidebar Navigation */}
             {user && (
               <Drawer
                 variant={isDesktop ? "permanent" : "temporary"}
@@ -131,6 +133,7 @@ function App() {
                   />
                 </Toolbar>
                 <List className="sidebar-list">
+                  {/* Dashboard (for any logged-in user) */}
                   <ListItemButton
                     component={Link}
                     to="/dashboard"
@@ -140,11 +143,10 @@ function App() {
                     <ListItemIcon className="sidebar-listicon">
                       <DashboardIcon />
                     </ListItemIcon>
-                    <BoldListItemText 
-                      primary="Dashboard"
-                    />
+                    <BoldListItemText primary="Dashboard" />
                   </ListItemButton>
 
+                  {/* Leads (admin only) */}
                   {user?.role === "admin" && (
                     <ListItemButton
                       component={Link}
@@ -155,10 +157,11 @@ function App() {
                       <ListItemIcon className="sidebar-listicon">
                         <PeopleIcon />
                       </ListItemIcon>
-                      <BoldListItemText  primary="Leads" />
+                      <BoldListItemText primary="Leads" />
                     </ListItemButton>
                   )}
 
+                  {/* Builders (admin or builder) */}
                   {(user?.role === "admin" || user?.role === "builder") && (
                     <ListItemButton
                       component={Link}
@@ -169,7 +172,7 @@ function App() {
                       <ListItemIcon className="sidebar-listicon">
                         <BuildIcon />
                       </ListItemIcon>
-                      <BoldListItemText  primary="Builders" />
+                      <BoldListItemText primary="Builders" />
                     </ListItemButton>
                   )}
                 </List>
@@ -197,21 +200,31 @@ function App() {
               }}
             >
               <Routes>
+                {/* If not logged in => go to /login */}
                 {!user ? (
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 ) : (
                   <>
+                    {/* Admin or any user sees the dashboard */}
                     <Route path="/dashboard" element={<DashboardPage />} />
+
+                    {/* Admin-only leads */}
+                    {user.role === "admin" && (
+                      <Route path="/leads" element={<Leads />} />
+                    )}
+
+                    {/* Admin or builder => Builders page */}
+                    {(user.role === "admin" || user.role === "builder") && (
+                      <Route path="/builders" element={<Builders />} />
+                    )}
+
+                    {/* Earnings example */}
                     <Route
                       path="/dashboard/earnings"
                       element={<EarningsPage invoices={[]} builders={[]} />}
                     />
-                    {user.role === "admin" && (
-                      <Route path="/leads" element={<Leads />} />
-                    )}
-                    {(user.role === "admin" || user.role === "builder") && (
-                      <Route path="/builders" element={<Builders />} />
-                    )}
+
+                    {/* Catch-all: admin => /dashboard, builder => /builders */}
                     <Route
                       path="*"
                       element={
@@ -224,6 +237,8 @@ function App() {
                     />
                   </>
                 )}
+
+                {/* Login route */}
                 <Route path="/login" element={<Login setUser={setUser} />} />
               </Routes>
             </Box>

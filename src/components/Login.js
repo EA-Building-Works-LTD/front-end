@@ -41,26 +41,30 @@ const Login = ({ setUser }) => {
 
   const handleLogin = async () => {
     try {
-      const sanitizedUsername = credentials.username.toLowerCase(); // Convert username to lowercase
+      console.log("Login credentials submitted:", credentials);
+
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/login`,
-        { ...credentials, username: sanitizedUsername } // Send the sanitized username
+        credentials
       );
+
+      console.log("Login response:", response.data);
+      console.log("Frontend API URL:", process.env.REACT_APP_API_URL);
+
       const { token, role } = response.data;
 
-      // Save token and role in localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
 
       setUser({ role });
 
-      // Redirect based on role
       if (role === "admin") {
-        navigate("/leads");
+        navigate("/dashboard");
       } else if (role === "builder") {
         navigate("/builders");
       }
     } catch (err) {
+      console.error("Error during login:", err.response?.data || err.message);
       setError(err.response?.data?.message || "Login failed");
     }
   };
@@ -157,9 +161,7 @@ const Login = ({ setUser }) => {
               onChange={(e) =>
                 setCredentials({
                   ...credentials,
-                  username:
-                    e.target.value.trim().charAt(0).toLowerCase() +
-                    e.target.value.slice(1), // Ensure the first letter is lowercase
+                  username: e.target.value,
                 })
               }
               sx={{

@@ -490,7 +490,7 @@ const Leads = () => {
                   className="copy-details-button"
                   onClick={() => {
                     navigator.clipboard.writeText(
-                      `Name: ${lead.fullName}\nAddress: ${lead.address}\nWork Required: ${lead.workRequired}\nExtra Details: ${lead.details}\nBudget: ${lead.budget}\nCity: ${lead.city}`
+                      `Name: ${lead.fullName}\nAddress: ${lead.address}\nPhone: ${lead.phoneNumber}\nWork Required: ${lead.workRequired}\nExtra Details: ${lead.details}\nBudget: ${lead.budget}\nCity: ${lead.city}`
                     );
                   }}
                 >
