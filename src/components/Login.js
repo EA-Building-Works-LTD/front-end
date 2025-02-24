@@ -23,14 +23,14 @@ const Login = ({ setUser }) => {
 
   useEffect(() => {
     // Disable scrolling for the entire page
-    document.documentElement.style.overflow = "hidden"; // For <html>
-    document.documentElement.style.height = "100%"; // Set full height for <html>
-    document.body.style.overflow = "hidden"; // For <body>
-    document.body.style.height = "100%"; // Set full height for <body>
-    document.body.style.margin = "0"; // Ensure no margins contribute to scrolling
+    document.documentElement.style.overflow = "hidden"; 
+    document.documentElement.style.height = "100%";
+    document.body.style.overflow = "hidden";
+    document.body.style.height = "100%";
+    document.body.style.margin = "0";
 
     return () => {
-      // Re-enable scrolling when unmounting the component
+      // Re-enable scrolling when unmounting
       document.documentElement.style.overflow = "auto";
       document.documentElement.style.height = "auto";
       document.body.style.overflow = "auto";
@@ -48,13 +48,19 @@ const Login = ({ setUser }) => {
       );
       console.log("Login response:", response.data);
       const { token, role } = response.data;
+
+      // Store token & role in localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
-      setUser({ role });
+
+      // If parent keeps track of the user, set it here
+      setUser && setUser({ role });
+
+      // Redirect based on role
       if (role === "admin") {
         navigate("/dashboard");
       } else if (role === "builder") {
-        // For builders (including zain), redirect to My Leads
+        // For builders, go to MyLeads page
         navigate("/my-leads");
       }
     } catch (err) {
@@ -70,7 +76,7 @@ const Login = ({ setUser }) => {
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        padding: "16px", // Add padding for smaller screens
+        padding: "16px",
       }}
     >
       <Box
@@ -79,11 +85,11 @@ const Login = ({ setUser }) => {
           maxWidth: 500,
           textAlign: "center",
           "@media (max-width: 768px)": {
-            maxWidth: "90%", // Adjust width for tablets
+            maxWidth: "90%",
           },
           "@media (max-width: 480px)": {
-            maxWidth: "100%", // Adjust width for mobile
-            padding: "0 16px", // Add horizontal padding on mobile
+            maxWidth: "100%",
+            padding: "0 16px",
           },
         }}
       >
@@ -93,10 +99,10 @@ const Login = ({ setUser }) => {
             boxShadow: 3,
             padding: "32px",
             "@media (max-width: 768px)": {
-              padding: "24px", // Reduce padding for tablets
+              padding: "24px",
             },
             "@media (max-width: 480px)": {
-              padding: "16px", // Reduce padding for mobile
+              padding: "16px",
             },
           }}
         >
@@ -112,7 +118,7 @@ const Login = ({ setUser }) => {
                 display: "block",
                 margin: "0 auto",
                 "@media (max-width: 480px)": {
-                  width: 180, // Adjust logo size for mobile
+                  width: 180,
                 },
               }}
             />
@@ -126,7 +132,7 @@ const Login = ({ setUser }) => {
                 marginBottom: "8px",
                 fontSize: "1.5rem",
                 "@media (max-width: 480px)": {
-                  fontSize: "1.25rem", // Adjust font size for mobile
+                  fontSize: "1.25rem",
                 },
               }}
             >
@@ -139,7 +145,7 @@ const Login = ({ setUser }) => {
                 marginBottom: "24px",
                 fontSize: "0.875rem",
                 "@media (max-width: 480px)": {
-                  fontSize: "0.75rem", // Adjust font size for mobile
+                  fontSize: "0.75rem",
                 },
               }}
             >
@@ -147,23 +153,22 @@ const Login = ({ setUser }) => {
               forgotten your password.
             </Typography>
 
+            {/* Username */}
             <TextField
               label="Username"
               fullWidth
               margin="normal"
               value={credentials.username}
               onChange={(e) =>
-                setCredentials({
-                  ...credentials,
-                  username: e.target.value,
-                })
+                setCredentials({ ...credentials, username: e.target.value })
               }
               sx={{
                 "@media (max-width: 480px)": {
-                  marginBottom: "16px", // Add spacing for mobile
+                  marginBottom: "16px",
                 },
               }}
             />
+            {/* Password */}
             <TextField
               label="Password"
               type="password"
@@ -175,7 +180,7 @@ const Login = ({ setUser }) => {
               }
               sx={{
                 "@media (max-width: 480px)": {
-                  marginBottom: "24px", // Add spacing for mobile
+                  marginBottom: "24px",
                 },
               }}
             />
@@ -191,13 +196,14 @@ const Login = ({ setUser }) => {
                 fontWeight: "bold",
                 "&:hover": { backgroundColor: "#333" },
                 "@media (max-width: 480px)": {
-                  padding: "10px 0", // Adjust padding for mobile
-                  fontSize: "0.875rem", // Adjust font size for mobile
+                  padding: "10px 0",
+                  fontSize: "0.875rem",
                 },
               }}
             >
               Login
             </Button>
+            {/* Error message */}
             {error && (
               <Typography
                 variant="body2"
@@ -207,7 +213,7 @@ const Login = ({ setUser }) => {
                   marginTop: "16px",
                   fontSize: "0.875rem",
                   "@media (max-width: 480px)": {
-                    fontSize: "0.75rem", // Adjust font size for mobile
+                    fontSize: "0.75rem",
                   },
                 }}
               >

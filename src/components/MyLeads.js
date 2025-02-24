@@ -1,6 +1,14 @@
 // src/MyLeads.js
 import React, { useState, useEffect } from "react";
-import { Box, Typography, CircularProgress, List, ListItem, ListItemText, Divider } from "@mui/material";
+import {
+  Box,
+  Typography,
+  CircularProgress,
+  List,
+  ListItem,
+  ListItemText,
+  Divider
+} from "@mui/material";
 import axios from "axios";
 
 const MyLeads = () => {
@@ -11,12 +19,14 @@ const MyLeads = () => {
   useEffect(() => {
     const fetchLeads = async () => {
       const token = localStorage.getItem("token");
+
       try {
-        // IMPORTANT: this must match the route actually defined in routes/builders.js
         const response = await axios.get(
           `${process.env.REACT_APP_API_URL}/api/builders/my-leads`,
           {
-            headers: { Authorization: `Bearer ${token}` },
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
           }
         );
         setLeads(response.data);
@@ -27,6 +37,7 @@ const MyLeads = () => {
         setLoading(false);
       }
     };
+
     fetchLeads();
   }, []);
 

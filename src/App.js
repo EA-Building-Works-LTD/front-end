@@ -30,7 +30,7 @@ import Builders from "./components/Builders";
 import MyLeads from "./components/MyLeads"; // New component for builder's leads
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
-import EarningsPage from "./components/EarningsPage";
+// import EarningsPage from "./components/EarningsPage";
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
 import BoldListItemText from "./components/BoldListItemText";
@@ -230,11 +230,6 @@ function App() {
                         <Route path="/my-leads" element={<MyLeads />} />
                       </>
                     )}
-                    {/* Earnings example */}
-                    <Route
-                      path="/dashboard/earnings"
-                      element={<EarningsPage invoices={[]} builders={[]} />}
-                    />
                     {/* Catch-all: redirect based on role */}
                     <Route
                       path="*"

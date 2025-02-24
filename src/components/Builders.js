@@ -18,6 +18,7 @@ const Builders = () => {
   useEffect(() => {
     const fetchJobs = async () => {
       const token = localStorage.getItem("token");
+
       try {
         const response = await axios.get(
           `${process.env.REACT_APP_API_URL}/api/builders/my-leads`,
@@ -35,6 +36,7 @@ const Builders = () => {
         setLoading(false);
       }
     };
+
     fetchJobs();
   }, []);
 
@@ -45,6 +47,7 @@ const Builders = () => {
       </Box>
     );
   }
+
   if (error) {
     return (
       <Box display="flex" justifyContent="center" mt={5}>
@@ -52,6 +55,7 @@ const Builders = () => {
       </Box>
     );
   }
+
   return (
     <Box>
       <Typography variant="h4" textAlign="center" my={4}>
