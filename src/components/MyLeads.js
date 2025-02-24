@@ -1,41 +1,33 @@
+// src/MyLeads.js
 import React, { useState, useEffect } from "react";
-import {
-  Box,
-  Typography,
-  CircularProgress,
-  List,
-  ListItem,
-  ListItemText,
-  Divider,
-} from "@mui/material";
+import { Box, Typography, CircularProgress, List, ListItem, ListItemText, Divider } from "@mui/material";
 import axios from "axios";
 
-const Builders = () => {
-  const [jobs, setJobs] = useState([]);
+const MyLeads = () => {
+  const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    const fetchJobs = async () => {
+    const fetchLeads = async () => {
       const token = localStorage.getItem("token");
       try {
+        // IMPORTANT: this must match the route actually defined in routes/builders.js
         const response = await axios.get(
           `${process.env.REACT_APP_API_URL}/api/builders/my-leads`,
           {
-            headers: {
-              Authorization: `Bearer ${token}`,
-            },
+            headers: { Authorization: `Bearer ${token}` },
           }
         );
-        setJobs(response.data);
-      } catch (error) {
-        console.error("Error fetching jobs:", error);
-        setError("Failed to fetch jobs. Please try again later.");
+        setLeads(response.data);
+      } catch (err) {
+        console.error("Error fetching leads:", err);
+        setError("Failed to fetch leads. Please try again later.");
       } finally {
         setLoading(false);
       }
     };
-    fetchJobs();
+    fetchLeads();
   }, []);
 
   if (loading) {
@@ -45,6 +37,7 @@ const Builders = () => {
       </Box>
     );
   }
+
   if (error) {
     return (
       <Box display="flex" justifyContent="center" mt={5}>
@@ -52,18 +45,19 @@ const Builders = () => {
       </Box>
     );
   }
+
   return (
     <Box>
       <Typography variant="h4" textAlign="center" my={4}>
-        My Assigned Jobs
+        My Leads
       </Typography>
       <List>
-        {jobs.map((job, index) => (
+        {leads.map((lead, index) => (
           <React.Fragment key={index}>
             <ListItem>
               <ListItemText
-                primary={job.fullName}
-                secondary={`Address: ${job.address} | Work: ${job.workRequired} | Budget: ${job.budget}`}
+                primary={lead.fullName}
+                secondary={`Address: ${lead.address} | Work: ${lead.workRequired} | Budget: ${lead.budget}`}
               />
             </ListItem>
             <Divider />
@@ -74,4 +68,4 @@ const Builders = () => {
   );
 };
 
-export default Builders;
+export default MyLeads;

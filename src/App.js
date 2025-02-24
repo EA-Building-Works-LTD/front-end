@@ -4,9 +4,9 @@ import {
   CssBaseline,
   Drawer,
   List,
-  ListItemIcon,
   Toolbar,
   ListItemButton,
+  ListItemIcon,
   Button,
   IconButton,
   AppBar,
@@ -18,7 +18,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { jwtDecode } from "jwt-decode"; // If this works for you
+import { jwtDecode } from "jwt-decode"; // Adjust if your library differs
 
 import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
@@ -27,6 +27,7 @@ import theme from "./theme";
 // Import components
 import Leads from "./components/Leads";
 import Builders from "./components/Builders";
+import MyLeads from "./components/MyLeads"; // New component for builder's leads
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
 import EarningsPage from "./components/EarningsPage";
@@ -39,7 +40,7 @@ const drawerWidth = 230;
 function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
-  const [drawerOpen, setDrawerOpen] = useState(false); // State to manage drawer open/close
+  const [drawerOpen, setDrawerOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width:1025px)");
 
   useEffect(() => {
@@ -52,7 +53,7 @@ function App() {
     }
 
     try {
-      // Example decode (adjust if your library differs)
+      // Decode token to check expiration
       const { exp } = jwtDecode(token);
       if (exp * 1000 < Date.now()) {
         localStorage.removeItem("token");
@@ -75,7 +76,7 @@ function App() {
     localStorage.removeItem("role");
     localStorage.removeItem("username"); // If storing builder name
     setUser(null);
-    setDrawerOpen(false); 
+    setDrawerOpen(false);
   };
 
   const toggleDrawer = () => {
@@ -133,47 +134,57 @@ function App() {
                   />
                 </Toolbar>
                 <List className="sidebar-list">
-                  {/* Dashboard (for any logged-in user) */}
-                  <ListItemButton
-                    component={Link}
-                    to="/dashboard"
-                    className="sidebar-listitem"
-                    onClick={toggleDrawer}
-                  >
-                    <ListItemIcon className="sidebar-listicon">
-                      <DashboardIcon />
-                    </ListItemIcon>
-                    <BoldListItemText primary="Dashboard" />
-                  </ListItemButton>
-
-                  {/* Leads (admin only) */}
                   {user?.role === "admin" && (
-                    <ListItemButton
-                      component={Link}
-                      to="/leads"
-                      className="sidebar-listitem"
-                      onClick={toggleDrawer}
-                    >
-                      <ListItemIcon className="sidebar-listicon">
-                        <PeopleIcon />
-                      </ListItemIcon>
-                      <BoldListItemText primary="Leads" />
-                    </ListItemButton>
+                    <>
+                      <ListItemButton
+                        component={Link}
+                        to="/dashboard"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <DashboardIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Dashboard" />
+                      </ListItemButton>
+                      <ListItemButton
+                        component={Link}
+                        to="/leads"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <PeopleIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Leads" />
+                      </ListItemButton>
+                      <ListItemButton
+                        component={Link}
+                        to="/builders"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <BuildIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Builders" />
+                      </ListItemButton>
+                    </>
                   )}
-
-                  {/* Builders (admin or builder) */}
-                  {(user?.role === "admin" || user?.role === "builder") && (
-                    <ListItemButton
-                      component={Link}
-                      to="/builders"
-                      className="sidebar-listitem"
-                      onClick={toggleDrawer}
-                    >
-                      <ListItemIcon className="sidebar-listicon">
-                        <BuildIcon />
-                      </ListItemIcon>
-                      <BoldListItemText primary="Builders" />
-                    </ListItemButton>
+                  {user?.role === "builder" && (
+                    <>
+                      <ListItemButton
+                        component={Link}
+                        to="/my-leads"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <BuildIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="My Leads" />
+                      </ListItemButton>
+                    </>
                   )}
                 </List>
                 <Box className="sidebar-logout">
@@ -200,44 +211,43 @@ function App() {
               }}
             >
               <Routes>
-                {/* If not logged in => go to /login */}
+                {/* Not logged in: redirect to /login */}
                 {!user ? (
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 ) : (
                   <>
-                    {/* Admin or any user sees the dashboard */}
-                    <Route path="/dashboard" element={<DashboardPage />} />
-
-                    {/* Admin-only leads */}
+                    {/* Admin routes */}
                     {user.role === "admin" && (
-                      <Route path="/leads" element={<Leads />} />
+                      <>
+                        <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/leads" element={<Leads />} />
+                        <Route path="/builders" element={<Builders />} />
+                      </>
                     )}
-
-                    {/* Admin or builder => Builders page */}
-                    {(user.role === "admin" || user.role === "builder") && (
-                      <Route path="/builders" element={<Builders />} />
+                    {/* Builder routes */}
+                    {user.role === "builder" && (
+                      <>
+                        <Route path="/my-leads" element={<MyLeads />} />
+                      </>
                     )}
-
                     {/* Earnings example */}
                     <Route
                       path="/dashboard/earnings"
                       element={<EarningsPage invoices={[]} builders={[]} />}
                     />
-
-                    {/* Catch-all: admin => /dashboard, builder => /builders */}
+                    {/* Catch-all: redirect based on role */}
                     <Route
                       path="*"
                       element={
                         user.role === "admin" ? (
                           <Navigate to="/dashboard" replace />
                         ) : (
-                          <Navigate to="/builders" replace />
+                          <Navigate to="/my-leads" replace />
                         )
                       }
                     />
                   </>
                 )}
-
                 {/* Login route */}
                 <Route path="/login" element={<Login setUser={setUser} />} />
               </Routes>

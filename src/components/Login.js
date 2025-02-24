@@ -42,26 +42,20 @@ const Login = ({ setUser }) => {
   const handleLogin = async () => {
     try {
       console.log("Login credentials submitted:", credentials);
-
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/login`,
         credentials
       );
-
       console.log("Login response:", response.data);
-      console.log("Frontend API URL:", process.env.REACT_APP_API_URL);
-
       const { token, role } = response.data;
-
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
-
       setUser({ role });
-
       if (role === "admin") {
         navigate("/dashboard");
       } else if (role === "builder") {
-        navigate("/builders");
+        // For builders (including zain), redirect to My Leads
+        navigate("/my-leads");
       }
     } catch (err) {
       console.error("Error during login:", err.response?.data || err.message);
