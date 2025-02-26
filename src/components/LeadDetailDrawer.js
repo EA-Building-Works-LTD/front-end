@@ -1,5 +1,5 @@
 // src/LeadDetailDrawer.js
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   Drawer,
   Box,
@@ -25,7 +25,6 @@ import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
 import LanguageIcon from "@mui/icons-material/Language";
 import MenuIcon from "@mui/icons-material/Menu";
-import MailIcon from "@mui/icons-material/Mail";
 import DoubleArrowIcon from "@mui/icons-material/DoubleArrow";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CircleIcon from "@mui/icons-material/Circle";
@@ -34,6 +33,7 @@ import { LocalizationProvider, DateTimePicker } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
 import "./LeadDetailDrawer.css";
 
+/** Helper to format a Date or timestamp number into a string. */
 function formatTimestamp(ts) {
   if (!ts) return "";
   const date = new Date(ts);
@@ -50,6 +50,7 @@ function formatTimestamp(ts) {
   return `${month} ${day}, ${year} ${hour}:${minuteStr}${ampm}`;
 }
 
+/** Helper to format a Date or timestamp into a day-of-week (e.g. "Monday"). */
 function formatDayOfWeek(ts) {
   if (!ts) return "";
   const date = new Date(ts);
@@ -57,12 +58,14 @@ function formatDayOfWeek(ts) {
   return date.toLocaleString("en-US", { weekday: "long" });
 }
 
+/** Helper to format numeric strings with commas (e.g. "12345" => "12,345"). */
 function formatWithCommas(value) {
   const digits = value.replace(/[^\d]/g, "");
   if (!digits) return "0";
   return parseInt(digits, 10).toLocaleString("en-GB");
 }
 
+/** The pipeline stages for the timeline. */
 const pipelineStages = [
   "New Lead",
   "In Progress",
@@ -73,20 +76,51 @@ const pipelineStages = [
 ];
 
 export default function LeadDetailDrawer({ open, onClose, lead }) {
-  const [allLeadData, setAllLeadData] = useState({});
+  /**
+   * allLeadData is a dictionary: { [leadId]: { stage, contractAmount, etc. } }
+   * We store it in localStorage so changes persist across page refreshes.
+   */
+  const [allLeadData, setAllLeadData] = useState(() => {
+    try {
+      const stored = localStorage.getItem("myLeadData");
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  });
+
+  /** Whenever allLeadData changes, we write it to localStorage. */
+  useEffect(() => {
+    localStorage.setItem("myLeadData", JSON.stringify(allLeadData));
+  }, [allLeadData]);
+
+  /** Which tab is active: "Activity", "Appointments", "Proposals", or "Notes" */
   const [activeTab, setActiveTab] = useState("Activity");
+
+  /** For the 3-dot "..." menu in the Appointment card */
   const [anchorEl, setAnchorEl] = useState(null);
+
+  /** For the "Delete Appointment" confirmation dialog */
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+
+  /** For the "Update Contract" modal */
   const [openContractModal, setOpenContractModal] = useState(false);
   const [tempContract, setTempContract] = useState("");
   const [tempCustomerName, setTempCustomerName] = useState("");
+
+  /** For the "Create/Update Appointment" modal */
   const [openDateModal, setOpenDateModal] = useState(false);
   const [tempAppointment, setTempAppointment] = useState(null);
+
+  /** For the "Change Lead Stage" modal */
   const [openStageModal, setOpenStageModal] = useState(false);
   const [tempStage, setTempStage] = useState("New Lead");
 
-  if (!lead || !lead._id) return null;
+  if (!lead || !lead._id) {
+    return null;
+  }
 
+  // Retrieve ephemeral leadObj or init if missing
   let leadObj = allLeadData[lead._id];
   if (!leadObj) {
     leadObj = {
@@ -99,20 +133,42 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
           id: Date.now(),
           timestamp: Date.now(),
           title: `Stage: New Lead added for ${lead.builder || "unknown"}`,
-          subtext: `Lead has been submitted on ${formatTimestamp(
-            lead.timestamp
-          )}`,
+          subtext: `Lead has been submitted on ${formatTimestamp(lead.timestamp)}`,
         },
       ],
     };
     setAllLeadData((prev) => ({ ...prev, [lead._id]: leadObj }));
   }
 
+  /** Add an activity entry for a given lead. */
+  function recordActivity(title, subtext) {
+    setAllLeadData((prev) => {
+      const oldData = prev[lead._id] || {};
+      const oldActivities = oldData.activities || [];
+      const newActivity = {
+        id: Date.now(),
+        timestamp: Date.now(),
+        title,
+        subtext,
+      };
+      return {
+        ...prev,
+        [lead._id]: {
+          ...oldData,
+          activities: [...oldActivities, newActivity],
+        },
+      };
+    });
+  }
+
+  /** Main function to update ephemeral data for this lead. */
   function updateLeadData(changes) {
     setAllLeadData((prev) => {
       const oldData = prev[lead._id] || {};
       const newData = { ...oldData, ...changes };
       let updatedActivities = oldData.activities || [];
+
+      // If stage changed
       if ("stage" in changes && changes.stage !== oldData.stage) {
         updatedActivities = [
           ...updatedActivities,
@@ -124,26 +180,20 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
           },
         ];
       }
-      if (
-        "contractAmount" in changes &&
-        changes.contractAmount !== oldData.contractAmount
-      ) {
+      // If contract changed
+      if ("contractAmount" in changes && changes.contractAmount !== oldData.contractAmount) {
         updatedActivities = [
           ...updatedActivities,
           {
             id: Date.now(),
             timestamp: Date.now(),
             title: "Contract Amount Updated",
-            subtext: `Contract changed from £${
-              oldData.contractAmount || "0"
-            } to £${changes.contractAmount}`,
+            subtext: `Contract changed from £${oldData.contractAmount || "0"} to £${changes.contractAmount}`,
           },
         ];
       }
-      if (
-        Object.prototype.hasOwnProperty.call(changes, "appointmentDate") &&
-        changes.appointmentDate !== oldData.appointmentDate
-      ) {
+      // If appointment changed
+      if ("appointmentDate" in changes && changes.appointmentDate !== oldData.appointmentDate) {
         if (!changes.appointmentDate && oldData.appointmentDate) {
           updatedActivities = [
             ...updatedActivities,
@@ -161,9 +211,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
               id: Date.now(),
               timestamp: Date.now(),
               title: "Appointment Created",
-              subtext: `Appointment set on ${formatTimestamp(
-                changes.appointmentDate
-              )}`,
+              subtext: `Appointment set on ${formatTimestamp(changes.appointmentDate)}`,
             },
           ];
         } else if (oldData.appointmentDate && changes.appointmentDate) {
@@ -173,20 +221,23 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
               id: Date.now(),
               timestamp: Date.now(),
               title: "Appointment Updated",
-              subtext: `Appointment changed from ${
-                formatTimestamp(oldData.appointmentDate) || "N/A"
-              } to ${formatTimestamp(changes.appointmentDate)}`,
+              subtext: `Appointment changed from ${formatTimestamp(oldData.appointmentDate) || "N/A"} to ${formatTimestamp(changes.appointmentDate)}`,
             },
           ];
         }
       }
+
       return {
         ...prev,
-        [lead._id]: { ...newData, activities: updatedActivities },
+        [lead._id]: {
+          ...newData,
+          activities: updatedActivities,
+        },
       };
     });
   }
 
+  /** Contract Modal Handlers */
   const handleOpenContractModal = () => {
     setTempContract(leadObj.contractAmount || "");
     setTempCustomerName(leadObj.customerName || "");
@@ -202,6 +253,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenContractModal(false);
   };
 
+  /** Appointment Modal Handlers */
   const handleOpenDateModal = () => {
     setTempAppointment(leadObj.appointmentDate || null);
     setOpenDateModal(true);
@@ -212,6 +264,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenDateModal(false);
   };
 
+  /** Stage Modal Handlers */
   const handleOpenStageModal = () => {
     setTempStage(leadObj.stage || "New Lead");
     setOpenStageModal(true);
@@ -222,6 +275,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenStageModal(false);
   };
 
+  /** Delete Appointment Handlers */
   function handleDeleteAppointment() {
     setAnchorEl(null);
     setOpenDeleteDialog(true);
@@ -234,17 +288,16 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenDeleteDialog(false);
   }
 
+  /** Displayed values */
   const displayedName = leadObj.customerName || "";
   const displayedAmount = leadObj.contractAmount || "0";
   const currentStage = leadObj.stage || "New Lead";
   const stageIndex = pipelineStages.indexOf(currentStage);
   const dealNumberString = `Lead # ${formatTimestamp(lead.timestamp) || ""}`;
-  const appointmentDay = leadObj.appointmentDate
-    ? formatDayOfWeek(leadObj.appointmentDate)
-    : "";
-  const appointmentDateString = leadObj.appointmentDate
-    ? formatTimestamp(leadObj.appointmentDate)
-    : "";
+  const appointmentDay = leadObj.appointmentDate ? formatDayOfWeek(leadObj.appointmentDate) : "";
+  const appointmentDateString = leadObj.appointmentDate ? formatTimestamp(leadObj.appointmentDate) : "";
+
+  /** For the "..." menu in the appointment card */
   const openMenu = (e) => setAnchorEl(e.currentTarget);
   const closeMenu = () => setAnchorEl(null);
 
@@ -255,27 +308,26 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
           anchor="right"
           open={open}
           onClose={onClose}
-          PaperProps={{ sx: { width: "75vw" } }}
+          PaperProps={{
+            sx: { width: "75vw" },
+          }}
         >
           <Box className="drawer-topbar">
             <IconButton onClick={onClose} size="small">
               <CloseIcon />
             </IconButton>
           </Box>
+
           <Box className="drawer-content">
+            {/* LEFT COLUMN */}
             <Box className="drawer-left">
-              <Typography className="deal-number">
-                {dealNumberString}
-              </Typography>
+              <Typography className="deal-number">{dealNumberString}</Typography>
               <Typography className="deal-title">
                 Enquiry: {lead.workRequired || ""}
               </Typography>
-              <Typography className="deal-subtext">
-                {lead.details || ""}
-              </Typography>
-              <Typography className="deal-subtext">
-                {lead.address || ""}
-              </Typography>
+              <Typography className="deal-subtext">{lead.details || ""}</Typography>
+              <Typography className="deal-subtext">{lead.address || ""}</Typography>
+
               <Box className="deal-buttons">
                 <Button
                   variant="contained"
@@ -318,6 +370,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   <MoreHorizIcon fontSize="small" />
                 </Button>
               </Box>
+
               <Box className="proposal-box">
                 <Box className="proposal-info">
                   <Typography variant="body2" sx={{ fontWeight: 600, mb: 0.5 }}>
@@ -328,23 +381,19 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   </Typography>
                 </Box>
               </Box>
-              <Typography
-                sx={{ fontSize: "1rem", fontWeight: 600, mb: 1, mt: 2 }}
-              >
+
+              <Typography sx={{ fontSize: "1rem", fontWeight: 600, mb: 1, mt: 2 }}>
                 Contact Details
               </Typography>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}
-              >
-                <Avatar
-                  sx={{ height: "32px", width: "32px", bgcolor: "#7D9B76" }}
-                >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
+                <Avatar sx={{ height: "32px", width: "32px", bgcolor: "#7D9B76" }}>
                   {displayedName[0] || ""}
                 </Avatar>
                 <Typography variant="body2" sx={{ fontWeight: 500 }}>
                   {displayedName}
                 </Typography>
               </Box>
+
               <Box className="contact-row">
                 <EmailIcon fontSize="medium" className="contact-icon" />
                 <Box>
@@ -378,15 +427,11 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   </Typography>
                 </Box>
               </Box>
-              <Typography
-                variant="body2"
-                sx={{ fontWeight: 600, mt: 3, mb: 1 }}
-              >
+
+              <Typography variant="body2" sx={{ fontWeight: 600, mt: 3, mb: 1 }}>
                 Builder
               </Typography>
-              <Box
-                sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}
-              >
+              <Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
                 <Avatar sx={{ bgcolor: "#a4b0be" }}>
                   {lead.builder?.[0] || ""}
                 </Avatar>
@@ -398,6 +443,8 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                 Lead created {formatTimestamp(lead.timestamp)}
               </Typography>
             </Box>
+
+            {/* RIGHT COLUMN */}
             <Box className="drawer-right">
               <Box className="pipeline-header">
                 <Typography className="pipeline-text">
@@ -405,6 +452,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   <strong>{leadObj.stage}</strong>
                 </Typography>
               </Box>
+
               <Box className="timeline-container">
                 {pipelineStages.map((stgName, idx) => {
                   let pillClass = "timeline-step";
@@ -420,6 +468,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   );
                 })}
               </Box>
+
               <Box className="pipeline-sequence-row">
                 <Box className="sequence-item">
                   <Box
@@ -445,45 +494,37 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   </Box>
                 </Box>
               </Box>
+
               <Box className="drawer-tabs">
                 <Typography
-                  className={`drawer-tab ${
-                    activeTab === "Activity" ? "active" : ""
-                  }`}
+                  className={`drawer-tab ${activeTab === "Activity" ? "active" : ""}`}
                   onClick={() => setActiveTab("Activity")}
                 >
                   Activity
                 </Typography>
                 <Typography
-                  className={`drawer-tab ${
-                    activeTab === "Appointments" ? "active" : ""
-                  }`}
+                  className={`drawer-tab ${activeTab === "Appointments" ? "active" : ""}`}
                   onClick={() => setActiveTab("Appointments")}
                 >
                   Appointments
                 </Typography>
                 <Typography
-                  className={`drawer-tab ${
-                    activeTab === "Proposals" ? "active" : ""
-                  }`}
+                  className={`drawer-tab ${activeTab === "Proposals" ? "active" : ""}`}
                   onClick={() => setActiveTab("Proposals")}
                 >
                   Proposals
                 </Typography>
                 <Typography
-                  className={`drawer-tab ${
-                    activeTab === "Notes" ? "active" : ""
-                  }`}
+                  className={`drawer-tab ${activeTab === "Notes" ? "active" : ""}`}
                   onClick={() => setActiveTab("Notes")}
                 >
                   Notes
                 </Typography>
               </Box>
+
               {activeTab === "Activity" && (
                 <Box className="subsection-block">
-                  <Typography className="subsection-title">
-                    Latest Activity
-                  </Typography>
+                  <Typography className="subsection-title">Latest Activity</Typography>
                   <Box className="activity-list">
                     {(leadObj.activities || [])
                       .slice()
@@ -495,15 +536,13 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                               className="activity-icon-circle"
                               style={{ backgroundColor: "#A7BF9F" }}
                             >
-                              {act.title.startsWith("Stage:") ? (
-                                <DoubleArrowIcon fontSize="small" />
-                              ) : act.title.includes("Appointment") ? (
-                                <CalendarMonthIcon fontSize="small" />
-                              ) : act.title === "Contract Amount Updated" ? (
-                                <AttachMoneyIcon fontSize="small" />
-                              ) : (
-                                <DoubleArrowIcon fontSize="small" />
-                              )}
+                              {act.title.startsWith("Stage:")
+                                ? <DoubleArrowIcon fontSize="small" />
+                                : act.title.includes("Appointment")
+                                ? <CalendarMonthIcon fontSize="small" />
+                                : act.title === "Contract Amount Updated"
+                                ? <AttachMoneyIcon fontSize="small" />
+                                : <DoubleArrowIcon fontSize="small" />}
                             </Box>
                             <Box className="activity-line" />
                           </Box>
@@ -523,24 +562,19 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   </Box>
                 </Box>
               )}
+
               {activeTab === "Appointments" && (
                 <Box className="subsection-block">
                   <Box className="section-header">
-                    <Typography className="subsection-title">
-                      Appointments
-                    </Typography>
-                    <Button
-                      className="create-btn"
-                      onClick={handleOpenDateModal}
-                    >
+                    <Typography className="subsection-title">Appointments</Typography>
+                    <Button className="create-btn" onClick={handleOpenDateModal}>
                       Create appointment
                     </Button>
                   </Box>
                   {!leadObj.appointmentDate && (
                     <Typography variant="body2" sx={{ color: "#999", mb: 2 }}>
-                      No date/time selected. Please use the Create Appointment
-                      button or click on the calendar icon next to the Update
-                      Contract button to set an appointment.
+                      No date/time selected. Please use the Create Appointment button or click on
+                      the calendar icon next to the Update Contract button to set an appointment.
                     </Typography>
                   )}
                   {leadObj.appointmentDate && (
@@ -555,12 +589,9 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                       </Box>
                       <Box className="appointment-center">
                         <Box className="appointment-title-row">
-                          <CircleIcon
-                            sx={{ fontSize: "0.7rem", color: "#27ae60" }}
-                          />
+                          <CircleIcon sx={{ fontSize: "0.7rem", color: "#27ae60" }} />
                           <Typography className="appointment-title">
-                            On-Site Estimate with{" "}
-                            <strong>{leadObj.customerName}</strong>
+                            On-Site Estimate with <strong>{leadObj.customerName}</strong>
                           </Typography>
                         </Box>
                         <Typography className="appointment-location">
@@ -600,12 +631,11 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   )}
                 </Box>
               )}
+
               {activeTab === "Proposals" && (
                 <Box className="subsection-block">
                   <Box className="section-header">
-                    <Typography className="subsection-title">
-                      Proposals
-                    </Typography>
+                    <Typography className="subsection-title">Proposals</Typography>
                     <Button className="create-btn">Create proposal</Button>
                   </Box>
                   <Box className="proposal-card2">
@@ -636,11 +666,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                         <Chip
                           label="PENDING"
                           size="small"
-                          sx={{
-                            bgcolor: "#f39c12",
-                            color: "#fff",
-                            fontWeight: 600,
-                          }}
+                          sx={{ bgcolor: "#f39c12", color: "#fff", fontWeight: 600 }}
                         />
                         <IconButton className="proposal-dots">
                           <MoreVertIcon />
@@ -650,6 +676,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                   </Box>
                 </Box>
               )}
+
               {activeTab === "Notes" && (
                 <Box className="subsection-block">
                   <Typography className="subsection-title">Notes</Typography>
@@ -661,6 +688,8 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
             </Box>
           </Box>
         </Drawer>
+
+        {/* UPDATE CONTRACT MODAL */}
         <Dialog open={openContractModal} onClose={handleCloseContractModal}>
           <DialogTitle>Update Contract</DialogTitle>
           <DialogContent dividers>
@@ -688,6 +717,8 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* APPOINTMENT DATE/TIME MODAL */}
         <Dialog open={openDateModal} onClose={handleCloseDateModal}>
           <DialogTitle>Please select appointment date/time</DialogTitle>
           <DialogContent dividers>
@@ -705,6 +736,8 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
             </Button>
           </DialogActions>
         </Dialog>
+
+        {/* STAGE MODAL */}
         <Dialog open={openStageModal} onClose={handleCloseStageModal}>
           <DialogTitle>Change Lead Stage</DialogTitle>
           <DialogContent dividers>
@@ -728,10 +761,9 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
             </Button>
           </DialogActions>
         </Dialog>
-        <Dialog
-          open={openDeleteDialog}
-          onClose={() => setOpenDeleteDialog(false)}
-        >
+
+        {/* DELETE APPOINTMENT DIALOG */}
+        <Dialog open={openDeleteDialog} onClose={cancelDeleteAppointment}>
           <DialogTitle>Delete Appointment</DialogTitle>
           <DialogContent dividers>
             <Typography variant="body2">
@@ -739,7 +771,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
             </Typography>
           </DialogContent>
           <DialogActions>
-            <Button onClick={() => setOpenDeleteDialog(false)}>Cancel</Button>
+            <Button onClick={cancelDeleteAppointment}>Cancel</Button>
             <Button variant="contained" onClick={confirmDeleteAppointment}>
               Yes, Delete
             </Button>
