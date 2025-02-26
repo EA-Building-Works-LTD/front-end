@@ -26,7 +26,7 @@ import theme from "./theme";
 
 // Import components
 import Leads from "./components/Leads";
-import Builders from "./components/Builders";
+// import Builders from "./components/Builders";
 import MyLeads from "./components/MyLeads"; // New component for builder's leads
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
@@ -158,7 +158,7 @@ function App() {
                         </ListItemIcon>
                         <BoldListItemText primary="Leads" />
                       </ListItemButton>
-                      <ListItemButton
+                      {/* <ListItemButton
                         component={Link}
                         to="/builders"
                         className="sidebar-listitem"
@@ -168,7 +168,7 @@ function App() {
                           <BuildIcon />
                         </ListItemIcon>
                         <BoldListItemText primary="Builders" />
-                      </ListItemButton>
+                      </ListItemButton> */}
                     </>
                   )}
                   {user?.role === "builder" && (
@@ -221,7 +221,7 @@ function App() {
                       <>
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/leads" element={<Leads />} />
-                        <Route path="/builders" element={<Builders />} />
+                        {/* <Route path="/builders" element={<Builders />} /> */}
                       </>
                     )}
                     {/* Builder routes */}
