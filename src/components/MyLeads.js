@@ -122,11 +122,8 @@ const MyLeads = () => {
     return Array.from(new Set(values));
   };
 
-  const customerNameOptions = getUniqueValues("fullName");
-  const addressOptions = getUniqueValues("address");
+
   const cityOptions = getUniqueValues("city");
-  const workRequiredOptions = getUniqueValues("workRequired");
-  const detailsOptions = getUniqueValues("details");
   const budgetOptions = getUniqueValues("budget");
 
   // Filter leads by global search term.
@@ -446,50 +443,6 @@ const MyLeads = () => {
             Filters
           </Typography>
 
-          {/* Customer Name Filter (dropdown) */}
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="filter-customer-name-label">Customer Name</InputLabel>
-            <Select
-              labelId="filter-customer-name-label"
-              value={filters.customerName}
-              label="Customer Name"
-              onChange={(e) =>
-                setFilters({ ...filters, customerName: e.target.value })
-              }
-            >
-              <MenuItem value="">
-                <em>All</em>
-              </MenuItem>
-              {customerNameOptions.map((name) => (
-                <MenuItem key={name} value={name}>
-                  {name}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Address Filter */}
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="filter-address-label">Address</InputLabel>
-            <Select
-              labelId="filter-address-label"
-              value={filters.address}
-              label="Address"
-              onChange={(e) =>
-                setFilters({ ...filters, address: e.target.value })
-              }
-            >
-              <MenuItem value="">
-                <em>All</em>
-              </MenuItem>
-              {addressOptions.map((addr) => (
-                <MenuItem key={addr} value={addr}>
-                  {addr}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
           {/* City Filter */}
           <FormControl fullWidth margin="normal">
             <InputLabel id="filter-city-label">City</InputLabel>
@@ -507,50 +460,6 @@ const MyLeads = () => {
               {cityOptions.map((city) => (
                 <MenuItem key={city} value={city}>
                   {city}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Work Required Filter */}
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="filter-work-required-label">Work Required</InputLabel>
-            <Select
-              labelId="filter-work-required-label"
-              value={filters.workRequired}
-              label="Work Required"
-              onChange={(e) =>
-                setFilters({ ...filters, workRequired: e.target.value })
-              }
-            >
-              <MenuItem value="">
-                <em>All</em>
-              </MenuItem>
-              {workRequiredOptions.map((work) => (
-                <MenuItem key={work} value={work}>
-                  {work}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-
-          {/* Details Filter */}
-          <FormControl fullWidth margin="normal">
-            <InputLabel id="filter-details-label">Details</InputLabel>
-            <Select
-              labelId="filter-details-label"
-              value={filters.details}
-              label="Details"
-              onChange={(e) =>
-                setFilters({ ...filters, details: e.target.value })
-              }
-            >
-              <MenuItem value="">
-                <em>All</em>
-              </MenuItem>
-              {detailsOptions.map((detail) => (
-                <MenuItem key={detail} value={detail}>
-                  {detail}
                 </MenuItem>
               ))}
             </Select>

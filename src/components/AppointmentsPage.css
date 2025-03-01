@@ -1,0 +1,83 @@
+/* src/components/AppointmentsPage.css */
+
+.appointments-container {
+    padding: 24px;
+    font-family: "Inter", sans-serif;
+    color: #333;
+    min-height: 100vh;
+    background-color: #f7f7f7; /* or your app background */
+    margin-top: 25px;
+    /* margin-bottom: 25px; */
+  }
+  
+  /* Single appointment card => same style as in your lead detail drawer */
+  .appointment-card {
+    border: 1px solid #eaeaea;
+    border-radius: 8px;
+    background-color: #fff;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  
+  /* Left column => day + date */
+  .appointment-left {
+    display: flex;
+    flex-direction: column;
+    min-width: 110px;
+  }
+  .appointment-day {
+    color: #27ae60;
+    font-size: 0.9rem;
+    font-weight: 500;
+  }
+  .appointment-date-h1 {
+    font-size: 1rem;
+    font-weight: 600;
+    margin: 4px 0;
+  }
+  
+  /* Middle column => title, address, builder */
+  .appointment-center {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+  }
+  .appointment-title-row {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .appointment-title {
+    font-size: 0.9rem;
+    color: #333;
+    font-weight: 400;
+  }
+  .appointment-location {
+    font-size: 0.85rem;
+    color: #666;
+  }
+  .appointment-person {
+    font-size: 0.85rem;
+    color: #333;
+    margin-top: 4px;
+  }
+  
+  /* 3-dots icon alignment */
+  .appointment-dots {
+    align-self: flex-start;
+    color: #999;
+  }
+  
+  /* Example: for narrower screens, you might make them full width stacked,
+     but if you want the same layout on all breakpoints, this is enough. */
+  @media (max-width: 768px) {
+    .appointments-container {
+      padding: 16px;
+    }
+  }
+  

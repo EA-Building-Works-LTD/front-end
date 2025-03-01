@@ -1,5 +1,5 @@
 // src/App.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   Box,
   CssBaseline,
@@ -18,6 +18,10 @@ import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
+import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
+import DescriptionIcon from "@mui/icons-material/Description";
+import FolderIcon from "@mui/icons-material/Folder";
+import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { jwtDecode } from "jwt-decode";
 
@@ -25,14 +29,19 @@ import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
 import theme from "./theme";
 
-// Import components
+// Import your pages/components
 import Leads from "./components/Leads";
-// import Builders from "./components/Builders";
-import MyLeads from "./components/MyLeads"; // Builder's leads page
+import MyLeads from "./components/MyLeads";
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
-// New mobile lead detail view component:
 import LeadDetailMobile from "./components/LeadDetailMobile";
+
+// New placeholders for builder pages
+import AppointmentsPage from "./components/AppointmentsPage";
+import ProposalsPage from "./components/ProposalsPage";
+import DocumentsPage from "./components/DocumentsPage";
+import ProfilePage from "./components/ProfilePage";
+
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
 import BoldListItemText from "./components/BoldListItemText";
@@ -40,11 +49,13 @@ import BoldListItemText from "./components/BoldListItemText";
 const drawerWidth = 230;
 
 function App() {
+  // Authentication state
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width:1025px)");
 
+  // Check token on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
@@ -71,18 +82,21 @@ function App() {
     setAuthChecked(true);
   }, []);
 
+  // Toggle drawer
+  const toggleDrawer = useCallback(() => {
+    setDrawerOpen((prev) => !prev);
+  }, []);
+
+  // Logout
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
-    localStorage.removeItem("username"); // If storing builder name
+    localStorage.removeItem("username");
     setUser(null);
     setDrawerOpen(false);
   };
 
-  const toggleDrawer = () => {
-    setDrawerOpen(!drawerOpen);
-  };
-
+  // If auth not checked, show loading
   if (!authChecked) {
     return <div>Loading...</div>;
   }
@@ -93,6 +107,7 @@ function App() {
         <LeadsProvider user={user}>
           <Box className="app-container">
             <CssBaseline />
+
             {/* AppBar for mobile/tablet */}
             {user && !isDesktop && (
               <AppBar position="fixed" className="appbar">
@@ -110,18 +125,14 @@ function App() {
               </AppBar>
             )}
 
-            {/* Sidebar Navigation */}
+            {/* Sidebar */}
             {user && (
               <Drawer
                 variant={isDesktop ? "permanent" : "temporary"}
                 open={isDesktop || drawerOpen}
                 onClose={toggleDrawer}
-                classes={{
-                  paper: "sidebar-paper",
-                }}
-                ModalProps={{
-                  keepMounted: true,
-                }}
+                classes={{ paper: "sidebar-paper" }}
+                ModalProps={{ keepMounted: true }}
               >
                 <Toolbar className="sidebar-toolbar">
                   <Box
@@ -133,6 +144,7 @@ function App() {
                   />
                 </Toolbar>
                 <List className="sidebar-list">
+                  {/* Admin Menu */}
                   {user?.role === "admin" && (
                     <>
                       <ListItemButton
@@ -159,18 +171,70 @@ function App() {
                       </ListItemButton>
                     </>
                   )}
+
+                  {/* Builder Menu */}
                   {user?.role === "builder" && (
-                    <ListItemButton
-                      component={Link}
-                      to="/my-leads"
-                      className="sidebar-listitem"
-                      onClick={toggleDrawer}
-                    >
-                      <ListItemIcon className="sidebar-listicon">
-                        <BuildIcon />
-                      </ListItemIcon>
-                      <BoldListItemText primary="My Leads" />
-                    </ListItemButton>
+                    <>
+                      <ListItemButton
+                        component={Link}
+                        to="/my-leads"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <BuildIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="My Leads" />
+                      </ListItemButton>
+
+                      <ListItemButton
+                        component={Link}
+                        to="/appointments"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <CalendarMonthIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Appointments" />
+                      </ListItemButton>
+
+                      <ListItemButton
+                        component={Link}
+                        to="/proposals"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <DescriptionIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Proposals" />
+                      </ListItemButton>
+
+                      <ListItemButton
+                        component={Link}
+                        to="/documents"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <FolderIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Documents" />
+                      </ListItemButton>
+
+                      <ListItemButton
+                        component={Link}
+                        to="/profile"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <AccountCircleIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Profile" />
+                      </ListItemButton>
+                    </>
                   )}
                 </List>
                 <Box className="sidebar-logout">
@@ -197,23 +261,35 @@ function App() {
               }}
             >
               <Routes>
+                {/* Not logged in => redirect to /login */}
                 {!user ? (
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 ) : (
                   <>
+                    {/* Admin Routes */}
                     {user.role === "admin" && (
                       <>
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/leads" element={<Leads />} />
+                        <Route path="/my-leads" element={<MyLeads />} />
                       </>
                     )}
+
+                    {/* Builder Routes */}
                     {user.role === "builder" && (
                       <>
                         <Route path="/my-leads" element={<MyLeads />} />
-                        {/* New mobile lead detail route uses a slug */}
                         <Route path="/my-leads/:slug" element={<LeadDetailMobile />} />
+
+                        {/* Additional builder pages */}
+                        <Route path="/appointments" element={<AppointmentsPage />} />
+                        <Route path="/proposals" element={<ProposalsPage />} />
+                        <Route path="/documents" element={<DocumentsPage />} />
+                        <Route path="/profile" element={<ProfilePage />} />
                       </>
                     )}
+
+                    {/* Fallback based on role */}
                     <Route
                       path="*"
                       element={
@@ -226,6 +302,7 @@ function App() {
                     />
                   </>
                 )}
+                {/* Login route */}
                 <Route path="/login" element={<Login setUser={setUser} />} />
               </Routes>
             </Box>
