@@ -2,132 +2,173 @@
 
 /* Overall container */
 .myLeads-container {
-    padding: 24px;
-    font-family: 'Inter', sans-serif;
-    color: #333;
-  }
-  
-  /* Title, Subtitle */
-  .section-title {
-    font-weight: 600;
-    margin-bottom: 4px;
-  }
-  .section-subtitle {
-    color: #777;
-    margin-bottom: 16px;
-  }
-  
-  /* Tabs */
-  .tabs-container {
-    display: flex;
-    align-items: center;
-    gap: 20px;
-    margin-bottom: 16px;
-  }
-  .tab-item {
-    position: relative;
-    padding: 8px 12px;
-    font-size: 0.9rem;
-    color: #777;
-    cursor: pointer;
-    border-bottom: 2px solid transparent;
-  }
-  .tab-item span {
-    margin-left: 6px;
-    color: #bbb;
-  }
-  .tab-item:hover {
-    color: #333;
-  }
-  .tab-item.active {
-    color: #000;
-    border-color: #6c5ce7; /* highlight color */
-  }
-  
-  /* Actions (Search, Filter, date range, etc.) */
-  .actions-row {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-bottom: 16px;
-  }
-  .search-field {
-    width: 300px;
-  }
-  .search-icon {
-    margin-right: 8px;
-    color: #aaa;
-  }
-  .action-buttons > * {
-    margin-left: 8px !important;
-  }
-  .date-range-button {
-    background-color: #f1f1f1 !important;
-    color: #333 !important;
-    border: 1px solid #ccc !important;
-  }
-  
-  /* Table */
+  padding: 24px;
+  font-family: 'Inter', sans-serif;
+  color: #333;
+}
+
+/* Title, Subtitle */
+.section-title {
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+.section-subtitle {
+  color: #777;
+  margin-bottom: 16px;
+}
+
+/* Tabs */
+.tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-bottom: 16px;
+}
+.tab-item {
+  position: relative;
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  color: #777;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab-item span {
+  margin-left: 6px;
+  color: #bbb;
+}
+.tab-item:hover {
+  color: #333;
+}
+.tab-item.active {
+  color: #000;
+  border-color: #6c5ce7; /* highlight color */
+}
+
+/* Actions (Search, Filter, date range, etc.) */
+.actions-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+}
+.search-field {
+  width: 300px;
+}
+.search-icon {
+  margin-right: 8px;
+  color: #aaa;
+}
+.action-buttons > * {
+  margin-left: 8px !important;
+}
+
+/* Table Container */
+.leads-table-container {
+  border-radius: 8px;
+  box-shadow: none;
+}
+.table-header {
+  font-weight: 600;
+  background: #f9fafb;
+  color: #444;
+  border-bottom: 1px solid #eaecef;
+}
+
+/* Client Cell with avatar and name */
+.client-cell {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.lead-avatar {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+}
+.client-name {
+  font-weight: 500;
+  color: #333;
+}
+.client-subtext {
+  font-size: 0.8rem;
+  color: #888;
+}
+
+/* Pagination */
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  gap: 16px;
+}
+.pagination-arrow {
+  border: 1px solid #ccc !important;
+  padding: 4px !important;
+}
+.pagination-arrow:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.pagination-info {
+  font-size: 0.9rem;
+  color: #333;
+}
+
+/* Loading & Error states */
+.myLeads-loading-container,
+.myLeads-error-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 40px;
+}
+
+/* Mobile Cards (for screens <= 768px) */
+@media (max-width: 768px) {
   .leads-table-container {
+    display: none; /* hide table on mobile */
+  }
+
+  /* Card layout container */
+  .mobile-cards-container {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .mobile-lead-card {
+    background: #fff;
+    border: 1px solid #ddd;
     border-radius: 8px;
-    box-shadow: none;
+    padding: 16px;
+    cursor: pointer;
   }
-  
-  .table-header {
-    font-weight: 600;
-    background: #f9fafb;
-    color: #444;
-    border-bottom: 1px solid #eaecef;
+  .mobile-lead-card:hover {
+    background: #f9f9f9;
   }
-  
-  /* Client Cell with avatar and name */
-  .client-cell {
+
+  .card-header {
     display: flex;
     align-items: center;
     gap: 12px;
+    margin-bottom: 8px;
   }
-  .avatar {
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    object-fit: cover;
-  }
-  .client-name {
-    font-weight: 500;
-    color: #333;
-  }
-  .client-subtext {
-    font-size: 0.8rem;
-    color: #888;
-  }
-  
-  /* Pagination */
-  .pagination-controls {
+  .card-content {
     display: flex;
-    align-items: center;
-    justify-content: center;
-    margin-top: 16px;
-    gap: 16px;
+    flex-direction: column;
+    gap: 4px;
   }
-  .pagination-arrow {
-    border: 1px solid #ccc !important;
-    padding: 4px !important;
+
+  /* Adjust some spacing for the search field */
+  .search-field {
+    width: 200px;
   }
-  .pagination-arrow:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
+
+  /* Possibly reduce tabs or hide them if needed */
+  .tabs-container {
+    flex-wrap: wrap;
+    gap: 10px;
   }
-  .pagination-info {
-    font-size: 0.9rem;
-    color: #333;
-  }
-  
-  /* Loading & Error states */
-  .myLeads-loading-container,
-  .myLeads-error-container {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 40px;
-  }
-  
+}

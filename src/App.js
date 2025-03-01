@@ -1,3 +1,4 @@
+// src/App.js
 import React, { useState, useEffect } from "react";
 import {
   Box,
@@ -18,7 +19,7 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { jwtDecode } from "jwt-decode"; // Adjust if your library differs
+import { jwtDecode } from "jwt-decode";
 
 import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
@@ -27,10 +28,11 @@ import theme from "./theme";
 // Import components
 import Leads from "./components/Leads";
 // import Builders from "./components/Builders";
-import MyLeads from "./components/MyLeads"; // New component for builder's leads
+import MyLeads from "./components/MyLeads"; // Builder's leads page
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
-// import EarningsPage from "./components/EarningsPage";
+// New mobile lead detail view component:
+import LeadDetailMobile from "./components/LeadDetailMobile";
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
 import BoldListItemText from "./components/BoldListItemText";
@@ -53,7 +55,6 @@ function App() {
     }
 
     try {
-      // Decode token to check expiration
       const { exp } = jwtDecode(token);
       if (exp * 1000 < Date.now()) {
         localStorage.removeItem("token");
@@ -67,7 +68,6 @@ function App() {
       localStorage.removeItem("role");
       setUser(null);
     }
-
     setAuthChecked(true);
   }, []);
 
@@ -93,7 +93,6 @@ function App() {
         <LeadsProvider user={user}>
           <Box className="app-container">
             <CssBaseline />
-
             {/* AppBar for mobile/tablet */}
             {user && !isDesktop && (
               <AppBar position="fixed" className="appbar">
@@ -161,19 +160,17 @@ function App() {
                     </>
                   )}
                   {user?.role === "builder" && (
-                    <>
-                      <ListItemButton
-                        component={Link}
-                        to="/my-leads"
-                        className="sidebar-listitem"
-                        onClick={toggleDrawer}
-                      >
-                        <ListItemIcon className="sidebar-listicon">
-                          <BuildIcon />
-                        </ListItemIcon>
-                        <BoldListItemText primary="My Leads" />
-                      </ListItemButton>
-                    </>
+                    <ListItemButton
+                      component={Link}
+                      to="/my-leads"
+                      className="sidebar-listitem"
+                      onClick={toggleDrawer}
+                    >
+                      <ListItemIcon className="sidebar-listicon">
+                        <BuildIcon />
+                      </ListItemIcon>
+                      <BoldListItemText primary="My Leads" />
+                    </ListItemButton>
                   )}
                 </List>
                 <Box className="sidebar-logout">
@@ -200,25 +197,23 @@ function App() {
               }}
             >
               <Routes>
-                {/* Not logged in: redirect to /login */}
                 {!user ? (
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 ) : (
                   <>
-                    {/* Admin routes */}
                     {user.role === "admin" && (
                       <>
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/leads" element={<Leads />} />
                       </>
                     )}
-                    {/* Builder routes */}
                     {user.role === "builder" && (
                       <>
                         <Route path="/my-leads" element={<MyLeads />} />
+                        {/* New mobile lead detail route uses a slug */}
+                        <Route path="/my-leads/:slug" element={<LeadDetailMobile />} />
                       </>
                     )}
-                    {/* Catch-all: redirect based on role */}
                     <Route
                       path="*"
                       element={
@@ -231,7 +226,6 @@ function App() {
                     />
                   </>
                 )}
-                {/* Login route */}
                 <Route path="/login" element={<Login setUser={setUser} />} />
               </Routes>
             </Box>
