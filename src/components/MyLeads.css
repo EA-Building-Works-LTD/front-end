@@ -161,14 +161,60 @@
     gap: 4px;
   }
 
-  /* Adjust some spacing for the search field */
+  /* Adjust search field width */
   .search-field {
     width: 200px;
   }
 
-  /* Possibly reduce tabs or hide them if needed */
+  /* Updated Tabs Container: force one line with horizontal scrolling */
   .tabs-container {
-    flex-wrap: wrap;
+    display: flex;
+    align-items: center;
     gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: nowrap;       /* Prevent wrapping */
+    overflow-x: auto;        /* Allow horizontal scroll */
+    white-space: nowrap;     /* Keep items on one line */
+    -webkit-overflow-scrolling: touch; /* smooth scrolling on iOS */
   }
+  
+  /* Ensure individual tab items don't shrink */
+  .tab-item {
+    flex-shrink: 0;
+  }
+}
+
+/* Filter Drawer */
+.filter-drawer {
+  width: 300px;
+  padding: 16px;
+  background-color: #f9f9f9;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.filter-title {
+  font-size: 18px;
+  font-weight: bold;
+  color: #333;
+  margin-bottom: 16px;
+}
+
+.filter-button {
+  background-color: #394736;
+  color: #fff;
+  font-weight: bold;
+  padding: 10px 16px;
+  border-radius: 4px;
+  text-transform: none;
+  font-size: 14px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+  border: none;
+}
+
+.filter-button:hover {
+  background-color: #6c8a66;
+  color: #fff;
 }
