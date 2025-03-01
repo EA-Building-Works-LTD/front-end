@@ -158,17 +158,6 @@ function App() {
                         </ListItemIcon>
                         <BoldListItemText primary="Leads" />
                       </ListItemButton>
-                      {/* <ListItemButton
-                        component={Link}
-                        to="/builders"
-                        className="sidebar-listitem"
-                        onClick={toggleDrawer}
-                      >
-                        <ListItemIcon className="sidebar-listicon">
-                          <BuildIcon />
-                        </ListItemIcon>
-                        <BoldListItemText primary="Builders" />
-                      </ListItemButton> */}
                     </>
                   )}
                   {user?.role === "builder" && (
@@ -221,7 +210,6 @@ function App() {
                       <>
                         <Route path="/dashboard" element={<DashboardPage />} />
                         <Route path="/leads" element={<Leads />} />
-                        {/* <Route path="/builders" element={<Builders />} /> */}
                       </>
                     )}
                     {/* Builder routes */}
