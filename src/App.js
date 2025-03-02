@@ -20,7 +20,6 @@ import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DescriptionIcon from "@mui/icons-material/Description";
-import FolderIcon from "@mui/icons-material/Folder";
 import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { jwtDecode } from "jwt-decode";
@@ -39,7 +38,7 @@ import LeadDetailMobile from "./components/LeadDetailMobile";
 // New placeholders for builder pages
 import AppointmentsPage from "./components/AppointmentsPage";
 import ProposalsPage from "./components/ProposalsPage";
-import DocumentsPage from "./components/DocumentsPage";
+// import DocumentsPage from "./components/DocumentsPage";
 import ProfilePage from "./components/ProfilePage";
 
 import { LeadsProvider } from "./components/LeadsContext";
@@ -213,18 +212,6 @@ function App() {
 
                       <ListItemButton
                         component={Link}
-                        to="/documents"
-                        className="sidebar-listitem"
-                        onClick={toggleDrawer}
-                      >
-                        <ListItemIcon className="sidebar-listicon">
-                          <FolderIcon />
-                        </ListItemIcon>
-                        <BoldListItemText primary="Documents" />
-                      </ListItemButton>
-
-                      <ListItemButton
-                        component={Link}
                         to="/profile"
                         className="sidebar-listitem"
                         onClick={toggleDrawer}
@@ -284,7 +271,6 @@ function App() {
                         {/* Additional builder pages */}
                         <Route path="/appointments" element={<AppointmentsPage />} />
                         <Route path="/proposals" element={<ProposalsPage />} />
-                        <Route path="/documents" element={<DocumentsPage />} />
                         <Route path="/profile" element={<ProfilePage />} />
                       </>
                     )}

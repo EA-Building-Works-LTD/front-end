@@ -1,6 +1,6 @@
 // Dashboard.js
 
-import React, { useRef, useState, useEffect } from "react";
+import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
 import {
   Box,
   Grid,
@@ -40,7 +40,7 @@ function formatUKDate(dateObj) {
 }
 
 export default function Dashboard() {
-  // Builders
+  // --- State Declarations ---
   const [builders, setBuilders] = useState([
     { id: 1, name: "N.Hussain", image: "https://via.placeholder.com/40" },
     { id: 2, name: "Z.Khan", image: "https://via.placeholder.com/40" },
@@ -49,11 +49,23 @@ export default function Dashboard() {
     { id: 5, name: "F.Khan", image: "https://via.placeholder.com/40" },
   ]);
 
-  // Invoice data
   const [invoiceNumber, setInvoiceNumber] = useState(10001);
   const [invoices, setInvoices] = useState([]);
+  const [selectedRows, setSelectedRows] = useState([]);
+  const [tableAction, setTableAction] = useState("");
+  const [selectedBuilderId, setSelectedBuilderId] = useState(null);
+  const [invoiceAmount, setInvoiceAmount] = useState("100");
+  const [openDialog, setOpenDialog] = useState(false);
+  const [newBuilderName, setNewBuilderName] = useState("");
+  
+  // For horizontal scroller
+  const scrollRef = useRef(null);
+  const [isDown, setIsDown] = useState(false);
+  const [startX, setStartX] = useState(0);
+  const [scrollLeft, setScrollLeft] = useState(0);
 
-  // On mount, load from localStorage
+  // --- Effects ---
+  // Load invoices from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem("invoices");
     if (saved) {
@@ -61,115 +73,69 @@ export default function Dashboard() {
     }
   }, []);
 
-  // Save whenever invoices changes
+  // Save invoices to localStorage whenever they change
   useEffect(() => {
     localStorage.setItem("invoices", JSON.stringify(invoices));
   }, [invoices]);
 
-  // For multi-select
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [tableAction, setTableAction] = useState("");
+  // --- Derived Values using useMemo ---
+  const doneBalance = useMemo(
+    () =>
+      invoices.reduce((acc, inv) => (inv.status === "Done" ? acc + Number(inv.amount) : acc), 0),
+    [invoices]
+  );
 
-  // For choosing a builder & invoice
-  const [selectedBuilderId, setSelectedBuilderId] = useState(null);
-  const [invoiceAmount, setInvoiceAmount] = useState("100");
-  const disableRequest =
-    !selectedBuilderId || !invoiceAmount || Number(invoiceAmount) < 1;
+  const pendingBalance = useMemo(
+    () =>
+      invoices.reduce((acc, inv) => (inv.status === "Pending" ? acc + Number(inv.amount) : acc), 0),
+    [invoices]
+  );
 
-  // Add new builder dialog
-  const [openDialog, setOpenDialog] = useState(false);
-  const [newBuilderName, setNewBuilderName] = useState("");
+  const builderPayments = useMemo(() => {
+    return builders.map((builder) => {
+      const totalPaid = invoices
+        .filter((inv) => inv.builderName === builder.name && inv.status === "Done")
+        .reduce((sum, inv) => sum + Number(inv.amount), 0);
+      return { ...builder, totalPaid };
+    });
+  }, [builders, invoices]);
 
-  // For the horizontal scroller
-  const scrollRef = useRef(null);
-  const [isDown, setIsDown] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
+  const topBuilders = useMemo(() => {
+    return [...builderPayments].sort((a, b) => b.totalPaid - a.totalPaid).slice(0, 5);
+  }, [builderPayments]);
 
-  // The dynamic total = sum of amounts for all "Done"
-  const doneBalance = invoices.reduce((acc, inv) => {
-    if (inv.status === "Done") {
-      return acc + Number(inv.amount);
-    }
-    return acc;
-  }, 0);
+  const disableRequest = useMemo(() => {
+    return !selectedBuilderId || !invoiceAmount || Number(invoiceAmount) < 1;
+  }, [selectedBuilderId, invoiceAmount]);
 
-  // The dynamic pending balance (sum of "Pending" transactions)
-  const pendingBalance = invoices.reduce((acc, inv) => {
-    if (inv.status === "Pending") {
-      return acc + Number(inv.amount);
-    }
-    return acc;
-  }, 0);
+  // --- Event Handlers using useCallback ---
 
-  // Calculate total payments per builder
-  const builderPayments = builders.map((builder) => {
-    const totalPaid = invoices
-      .filter(
-        (inv) => inv.builderName === builder.name && inv.status === "Done"
-      )
-      .reduce((sum, inv) => sum + Number(inv.amount), 0);
-
-    return { ...builder, totalPaid };
-  });
-
-  // Sort builders by totalPaid descending and get the top 5
-  const topBuilders = [...builderPayments]
-    .sort((a, b) => b.totalPaid - a.totalPaid)
-    .slice(0, 5);
-
-  // ---- "Add new" builder dialog handlers
-  const handleAddNewClick = () => setOpenDialog(true);
-  const handleClose = () => {
-    setOpenDialog(false);
-    setNewBuilderName("");
-  };
-  const handleAddBuilder = () => {
-    if (!newBuilderName.trim()) return;
-    const newId = builders.length + 1;
-    setBuilders([
-      ...builders,
-      {
-        id: newId,
-        name: newBuilderName,
-        image: "https://via.placeholder.com/40",
-      },
-    ]);
-    handleClose();
-  };
-
-  // Select builder for invoice
-  const handleSelectBuilder = (builderId) => {
-    setSelectedBuilderId(builderId);
-  };
-
-  // Scroll drag in "UK Builders"
-  const handleMouseDown = (e) => {
+  // Builder scroller events
+  const handleMouseDown = useCallback((e) => {
     if (!scrollRef.current) return;
     setIsDown(true);
     setStartX(e.pageX - scrollRef.current.offsetLeft);
     setScrollLeft(scrollRef.current.scrollLeft);
-  };
-  const handleMouseLeave = () => setIsDown(false);
-  const handleMouseUp = () => setIsDown(false);
-  const handleMouseMove = (e) => {
+  }, []);
+
+  const handleMouseLeave = useCallback(() => setIsDown(false), []);
+  const handleMouseUp = useCallback(() => setIsDown(false), []);
+  const handleMouseMove = useCallback((e) => {
     if (!isDown || !scrollRef.current) return;
     e.preventDefault();
     const x = e.pageX - scrollRef.current.offsetLeft;
     scrollRef.current.scrollLeft = scrollLeft - (x - startX);
-  };
+  }, [isDown, scrollLeft, startX]);
 
-  // For checking/unchecking individual rows
-  const handleRowCheckbox = (invId, checked) => {
-    if (checked) {
-      setSelectedRows((prev) => [...prev, invId]);
-    } else {
-      setSelectedRows((prev) => prev.filter((id) => id !== invId));
-    }
-  };
+  // Row checkbox handler
+  const handleRowCheckbox = useCallback((invId, checked) => {
+    setSelectedRows((prev) =>
+      checked ? [...prev, invId] : prev.filter((id) => id !== invId)
+    );
+  }, []);
 
-  // The Action dropdown for selected rows
-  const handleTableActionChange = (e) => {
+  // Table action handler
+  const handleTableActionChange = useCallback((e) => {
     const action = e.target.value;
     setTableAction(action);
 
@@ -186,14 +152,34 @@ export default function Dashboard() {
         prev.filter((inv) => !selectedRows.includes(inv.id))
       );
     }
-
-    // Clear selection + reset
+    // Clear selection and reset
     setSelectedRows([]);
     setTableAction("");
-  };
+  }, [selectedRows]);
 
-  // Generate invoice with a guaranteed-unique ID
-  const handleRequestClick = () => {
+  // Handler to select a builder for invoice
+  const handleSelectBuilder = useCallback((builderId) => {
+    setSelectedBuilderId(builderId);
+  }, []);
+
+  // "Add New" Builder Dialog handlers
+  const handleAddNewClick = useCallback(() => setOpenDialog(true), []);
+  const handleCloseDialog = useCallback(() => {
+    setOpenDialog(false);
+    setNewBuilderName("");
+  }, []);
+  const handleAddBuilder = useCallback(() => {
+    if (!newBuilderName.trim()) return;
+    const newId = builders.length + 1;
+    setBuilders((prev) => [
+      ...prev,
+      { id: newId, name: newBuilderName, image: "https://via.placeholder.com/40" },
+    ]);
+    handleCloseDialog();
+  }, [newBuilderName, builders.length, handleCloseDialog]);
+
+  // Invoice request & PDF generation
+  const handleRequestClick = useCallback(() => {
     if (disableRequest) return;
 
     const builder = builders.find((b) => b.id === selectedBuilderId);
@@ -203,9 +189,7 @@ export default function Dashboard() {
     const invoiceDateIssued = formatUKDate(issueDateObj);
     const fileDate = invoiceDateIssued.replace(/\//g, "-"); // "DD-MM-YYYY"
     const currentInvoiceNo = invoiceNumber;
-    const dueDateObj = new Date(
-      issueDateObj.getTime() + 7 * 24 * 60 * 60 * 1000
-    );
+    const dueDateObj = new Date(issueDateObj.getTime() + 7 * 24 * 60 * 60 * 1000);
     const invoiceDueDate = formatUKDate(dueDateObj);
 
     const doc = new jsPDF("portrait", "pt", "A4");
@@ -271,11 +255,8 @@ export default function Dashboard() {
     doc.save(fileName);
 
     setInvoiceNumber((prev) => prev + 1);
-
     const uniqueSuffix = Math.random().toString(36).slice(2, 10);
     const uniqueId = `inv-${currentInvoiceNo}-${uniqueSuffix}`;
-
-    // 2) Insert the new invoice at the TOP of the list:
     const newInvoice = {
       id: uniqueId,
       builderName: builder.name,
@@ -283,11 +264,23 @@ export default function Dashboard() {
       status: "Pending",
       amount: Number(invoiceAmount).toFixed(2),
     };
-
-    // add new invoice to the FRONT so it appears at the top
+    // Add the new invoice to the front of the list
     setInvoices((prev) => [newInvoice, ...prev]);
-  };
+  }, [disableRequest, builders, selectedBuilderId, invoiceNumber, invoiceAmount]);
 
+  // Table checkbox handlers for "select all"
+  const handleSelectAll = useCallback(
+    (e) => {
+      if (e.target.checked) {
+        setSelectedRows(invoices.map((inv) => inv.id));
+      } else {
+        setSelectedRows([]);
+      }
+    },
+    [invoices]
+  );
+
+  // --- Render ---
   return (
     <Box className="dashboard-container">
       {/* Row 1: Balances */}
@@ -313,6 +306,7 @@ export default function Dashboard() {
           </div>
         </Grid>
       </Grid>
+
       {/* Row 2: Transactions */}
       <Grid container spacing={2}>
         <Grid item xs={12}>
@@ -322,8 +316,6 @@ export default function Dashboard() {
                 <Typography variant="h6" className="transactions-title">
                   Payment History
                 </Typography>
-
-                {/* The single drop-down to apply to selected rows */}
                 <FormControl size="small" className="action-dropdown">
                   <InputLabel>Action</InputLabel>
                   <Select
@@ -337,37 +329,22 @@ export default function Dashboard() {
                   </Select>
                 </FormControl>
               </Box>
-
               <Typography variant="caption" className="transactions-caption">
                 Your invoice history
               </Typography>
-
-              {/* Table container (scroll for ~7 transactions) */}
               <TableContainer component={Paper} className="transactions-table-container">
                 <Table size="small" stickyHeader>
                   <TableHead>
                     <TableRow className="transactions-table-head">
-                      {/* SELECT ALL CHECKBOX in header */}
                       <TableCell className="table-cell-checkbox">
                         <Checkbox
                           className="select-all-checkbox"
                           indeterminate={
-                            selectedRows.length > 0 &&
-                            selectedRows.length < invoices.length
+                            selectedRows.length > 0 && selectedRows.length < invoices.length
                           }
-                          checked={
-                            invoices.length > 0 &&
-                            selectedRows.length === invoices.length
-                          }
-                          onChange={(e) => {
-                            if (e.target.checked) {
-                              // select all invoice IDs
-                              setSelectedRows(invoices.map((inv) => inv.id));
-                            } else {
-                              // unselect all
-                              setSelectedRows([]);
-                            }
-                          }}
+                          checked={invoices.length > 0 && selectedRows.length === invoices.length}
+                          onChange={handleSelectAll}
+                          aria-label="Select all invoices"
                         />
                       </TableCell>
                       <TableCell className="table-cell">Builder</TableCell>
@@ -378,9 +355,7 @@ export default function Dashboard() {
                   </TableHead>
                   <TableBody>
                     {invoices.map((inv) => {
-                      // each invoice has a truly unique id
                       const isChecked = selectedRows.includes(inv.id);
-
                       return (
                         <TableRow key={inv.id} hover className="transaction-row">
                           <TableCell className="table-cell-checkbox">
@@ -390,11 +365,10 @@ export default function Dashboard() {
                               onChange={(e) =>
                                 handleRowCheckbox(inv.id, e.target.checked)
                               }
+                              aria-label={`Select invoice ${inv.id}`}
                             />
                           </TableCell>
-                          <TableCell className="table-cell">
-                            {inv.builderName}
-                          </TableCell>
+                          <TableCell className="table-cell">{inv.builderName}</TableCell>
                           <TableCell className="table-cell">{inv.date}</TableCell>
                           <TableCell className={`table-cell status-${inv.status.toLowerCase()}`}>
                             {inv.status}
@@ -424,20 +398,13 @@ export default function Dashboard() {
                   UK Builders
                 </Typography>
               </Box>
-
-              {/* Center-aligned "Add new" */}
               <Box className="uk-builders-add-new">
-                <Box
-                  className="add-new-builder"
-                  onClick={handleAddNewClick}
-                >
-                  <Box className="add-new-icon">+</Box>
+                <Box className="add-new-builder" onClick={handleAddNewClick} role="button" tabIndex={0}>
+                  <Box className="add-new-icon" aria-hidden="true">+</Box>
                   <Typography variant="caption" className="add-new-text">
                     Add new
                   </Typography>
                 </Box>
-
-                {/* SCROLLER for builders */}
                 <Box
                   ref={scrollRef}
                   className={`builders-scroller ${isDown ? "active-scroll" : ""}`}
@@ -445,18 +412,19 @@ export default function Dashboard() {
                   onMouseLeave={handleMouseLeave}
                   onMouseUp={handleMouseUp}
                   onMouseMove={handleMouseMove}
+                  role="region"
+                  aria-label="UK Builders scroller"
                 >
                   {builders.map((b) => (
                     <Box
                       key={b.id}
                       onClick={() => handleSelectBuilder(b.id)}
                       className={`builder-item ${selectedBuilderId === b.id ? "selected-builder" : ""}`}
+                      role="button"
+                      tabIndex={0}
+                      aria-label={`Select builder ${b.name}`}
                     >
-                      <Avatar
-                        alt={b.name}
-                        src={b.image}
-                        className="builder-avatar"
-                      />
+                      <Avatar alt={b.name} src={b.image} className="builder-avatar" />
                       <Typography variant="caption" className="builder-name">
                         {b.name}
                       </Typography>
@@ -464,7 +432,6 @@ export default function Dashboard() {
                   ))}
                 </Box>
               </Box>
-
               <Box className="uk-builders-actions">
                 <Box className="amount-input-container">
                   <Typography variant="caption" className="amount-label">
@@ -477,14 +444,15 @@ export default function Dashboard() {
                     value={invoiceAmount}
                     onChange={(e) => setInvoiceAmount(e.target.value)}
                     className="amount-input"
+                    inputProps={{ "aria-label": "Invoice Amount" }}
                   />
                 </Box>
-
                 <Button
                   variant="contained"
                   disabled={disableRequest}
                   onClick={handleRequestClick}
                   className={`request-button ${disableRequest ? "disabled-button" : ""}`}
+                  aria-label="Request Invoice"
                 >
                   Request
                 </Button>
@@ -505,11 +473,7 @@ export default function Dashboard() {
               <Box className="top-builders-list">
                 {topBuilders.map((builder) => (
                   <Box key={builder.id} className="top-builder-item">
-                    <Avatar
-                      alt={builder.name}
-                      src={builder.image}
-                      className="top-builder-avatar"
-                    />
+                    <Avatar alt={builder.name} src={builder.image} className="top-builder-avatar" />
                     <Typography variant="body2" className="top-builder-name">
                       {builder.name}
                     </Typography>
@@ -519,16 +483,6 @@ export default function Dashboard() {
                   </Box>
                 ))}
               </Box>
-              <Box className="top-builders-button-container">
-                <Button
-                  component={Link}
-                  to="/dashboard/earnings"
-                  variant="contained"
-                  className="view-more-button"
-                >
-                  View More
-                </Button>
-              </Box>
             </CardContent>
           </Card>
         </Grid>
@@ -537,23 +491,18 @@ export default function Dashboard() {
       {/* Add New Builder Dialog */}
       <Dialog
         open={openDialog}
-        onClose={handleClose}
+        onClose={handleCloseDialog}
         maxWidth="xs"
         fullWidth
         className="add-builder-dialog"
+        aria-labelledby="add-builder-dialog-title"
       >
-        <DialogTitle className="dialog-title">
-          <Box
-            component="img"
-            src="/EABuildingWorksLTD.png"
-            alt="Logo"
-            className="dialog-logo"
-          />
+        <DialogTitle id="add-builder-dialog-title" className="dialog-title">
+          <Box component="img" src="/EABuildingWorksLTD.png" alt="Logo" className="dialog-logo" />
           <Typography variant="h6" className="dialog-subtitle">
             Please add builder details below
           </Typography>
         </DialogTitle>
-
         <DialogContent className="dialog-content">
           <TextField
             label="Builder Name"
@@ -561,27 +510,19 @@ export default function Dashboard() {
             value={newBuilderName}
             onChange={(e) => setNewBuilderName(e.target.value)}
             className="builder-name-input"
+            inputProps={{ "aria-label": "New Builder Name" }}
           />
         </DialogContent>
-
         <DialogActions className="dialog-actions">
-          <Button
-            onClick={handleClose}
-            variant="outlined"
-            className="cancel-button"
-          >
+          <Button onClick={handleCloseDialog} variant="outlined" className="cancel-button" aria-label="Cancel adding builder">
             Cancel
           </Button>
-
-          <Button
-            onClick={handleAddBuilder}
-            variant="contained"
-            className="add-button"
-          >
+          <Button onClick={handleAddBuilder} variant="contained" className="add-button" aria-label="Add builder">
             Add
           </Button>
         </DialogActions>
       </Dialog>
-    </Box> 
+    </Box>
   );
 }
+
