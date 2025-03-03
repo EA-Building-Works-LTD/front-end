@@ -183,7 +183,7 @@ export default function Login({ setUser }) {
               Username
             </Typography>
             <TextField
-              placeholder="Geoffrey Mott"
+              placeholder="Username"
               variant="outlined"
               fullWidth
               inputRef={usernameRef}
