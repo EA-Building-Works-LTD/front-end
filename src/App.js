@@ -20,7 +20,6 @@ import PeopleIcon from "@mui/icons-material/People";
 import BuildIcon from "@mui/icons-material/Build";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DescriptionIcon from "@mui/icons-material/Description";
-import AccountCircleIcon from "@mui/icons-material/AccountCircle";
 import LogoutIcon from "@mui/icons-material/Logout";
 import { jwtDecode } from "jwt-decode";
 
@@ -38,8 +37,6 @@ import LeadDetailMobile from "./components/LeadDetailMobile";
 // New placeholders for builder pages
 import AppointmentsPage from "./components/AppointmentsPage";
 import ProposalsPage from "./components/ProposalsPage";
-// import DocumentsPage from "./components/DocumentsPage";
-import ProfilePage from "./components/ProfilePage";
 
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
@@ -209,18 +206,6 @@ function App() {
                         </ListItemIcon>
                         <BoldListItemText primary="Proposals" />
                       </ListItemButton>
-
-                      <ListItemButton
-                        component={Link}
-                        to="/profile"
-                        className="sidebar-listitem"
-                        onClick={toggleDrawer}
-                      >
-                        <ListItemIcon className="sidebar-listicon">
-                          <AccountCircleIcon />
-                        </ListItemIcon>
-                        <BoldListItemText primary="Profile" />
-                      </ListItemButton>
                     </>
                   )}
                 </List>
@@ -271,7 +256,6 @@ function App() {
                         {/* Additional builder pages */}
                         <Route path="/appointments" element={<AppointmentsPage />} />
                         <Route path="/proposals" element={<ProposalsPage />} />
-                        <Route path="/profile" element={<ProfilePage />} />
                       </>
                     )}
 

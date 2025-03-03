@@ -87,7 +87,7 @@
 /* Main Content */
 .main-content {
   flex-grow: 1;
-  padding: 24px;
+  /* padding: 24px; */
   background-color: #EAEAEA;
   overflow-y: auto;
 }

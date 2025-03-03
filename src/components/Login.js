@@ -1,230 +1,312 @@
-import React, { useState, useEffect } from "react";
+// src/components/Login.js
+import React, { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
-
-// --- MUI Imports ---
 import {
   Box,
-  Card,
-  CardContent,
-  TextField,
   Typography,
+  TextField,
   Button,
+  Checkbox,
+  FormControlLabel,
+  CssBaseline,
+  Snackbar,
+  Alert,
 } from "@mui/material";
-import LoginIcon from "@mui/icons-material/Login";
 
-const Login = ({ setUser }) => {
+export default function Login({ setUser }) {
   const [credentials, setCredentials] = useState({
     username: "",
     password: "",
   });
+  const [rememberMe, setRememberMe] = useState(false);
   const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const [roleFromStorage, setRoleFromStorage] = useState(null);
+  const [usernameFromStorage, setUsernameFromStorage] = useState("");
+
   const navigate = useNavigate();
+  const usernameRef = useRef(null);
 
+  // State for showing "Forgot" messages in a Snackbar
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+
+  // Load role & username from localStorage (if already logged in) and check if "rememberMe" was set
   useEffect(() => {
-    // Disable scrolling for the entire page
-    document.documentElement.style.overflow = "hidden"; 
-    document.documentElement.style.height = "100%";
-    document.body.style.overflow = "hidden";
-    document.body.style.height = "100%";
-    document.body.style.margin = "0";
+    const storedRole = localStorage.getItem("role");
+    const storedUsername = localStorage.getItem("username");
+    if (storedRole) setRoleFromStorage(storedRole);
+    if (storedUsername) setUsernameFromStorage(storedUsername);
 
-    return () => {
-      // Re-enable scrolling when unmounting
-      document.documentElement.style.overflow = "auto";
-      document.documentElement.style.height = "auto";
-      document.body.style.overflow = "auto";
-      document.body.style.height = "auto";
-      document.body.style.margin = "initial";
-    };
+    // Check if user previously chose to remember their username
+    const remembered = localStorage.getItem("rememberMe") === "true";
+    const rememberedUsername = localStorage.getItem("rememberedUsername");
+    if (remembered && rememberedUsername) {
+      setRememberMe(true);
+      setCredentials((prev) => ({ ...prev, username: rememberedUsername }));
+    }
   }, []);
 
+  // Focus on username field if there's an error
+  useEffect(() => {
+    if (error && usernameRef.current) {
+      usernameRef.current.focus();
+    }
+  }, [error]);
+
+  // Handle user login
   const handleLogin = async () => {
+    if (!credentials.username || !credentials.password) {
+      setError("Please fill in both fields");
+      return;
+    }
+    setLoading(true);
+    setError("");
     try {
-      console.log("Login credentials submitted:", credentials);
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/login`,
         credentials
       );
-      console.log("Login response:", response.data);
       const { token, role } = response.data;
 
-      // Store token & role in localStorage
+      // Store the token, role, and username in localStorage
       localStorage.setItem("token", token);
       localStorage.setItem("role", role);
+      localStorage.setItem("username", credentials.username);
 
-      // If parent keeps track of the user, set it here
-      setUser && setUser({ role });
+      // If "Remember me" is checked, store the username
+      if (rememberMe) {
+        localStorage.setItem("rememberMe", "true");
+        localStorage.setItem("rememberedUsername", credentials.username);
+      } else {
+        localStorage.removeItem("rememberMe");
+        localStorage.removeItem("rememberedUsername");
+      }
 
-      // Redirect based on role
+      if (setUser) {
+        setUser({ role });
+      }
+
+      // Navigate based on role
       if (role === "admin") {
         navigate("/dashboard");
       } else if (role === "builder") {
-        // For builders, go to MyLeads page
         navigate("/my-leads");
       }
     } catch (err) {
-      console.error("Error during login:", err.response?.data || err.message);
       setError(err.response?.data?.message || "Login failed");
+    } finally {
+      setLoading(false);
     }
   };
 
+  // Handle clicking "Forgot" links
+  const handleForgotMessage = (type) => {
+    let message = "";
+    if (type === "username") {
+      message =
+        "Forgot Username?\nPlease contact admin at eabuildingworksltd@gmail.com";
+    } else if (type === "password") {
+      message =
+        "Forgot Password?\nPlease contact admin at eabuildingworksltd@gmail.com";
+    }
+    setSnackbarMessage(message);
+    setSnackbarOpen(true);
+  };
+
+  // Close Snackbar
+  const handleSnackbarClose = () => {
+    setSnackbarOpen(false);
+    setSnackbarMessage("");
+  };
+
+  // Decide welcome text based on role
+  let welcomeText = "Welcome";
+  if (roleFromStorage === "builder") {
+    welcomeText = `Welcome ${usernameFromStorage}`;
+  } else if (roleFromStorage === "admin") {
+    welcomeText = "Welcome Admin";
+  }
+
   return (
-    <Box
-      sx={{
-        height: "100vh",
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        padding: "16px",
-      }}
-    >
+    <>
+      <CssBaseline />
       <Box
         sx={{
-          width: "100%",
-          maxWidth: 500,
-          textAlign: "center",
-          "@media (max-width: 768px)": {
-            maxWidth: "90%",
-          },
-          "@media (max-width: 480px)": {
-            maxWidth: "100%",
-            padding: "0 16px",
-          },
+          display: "flex",
+          flexDirection: { xs: "column", md: "row" },
+          width: "100vw",
+          height: "100vh",
+          overflow: "hidden", // Keep overall no-scroll design
         }}
       >
-        <Card
+        {/* Left Column (form + disclaimers) */}
+        <Box
           sx={{
-            borderRadius: 3,
-            boxShadow: 3,
-            padding: "32px",
-            "@media (max-width: 768px)": {
-              padding: "24px",
-            },
-            "@media (max-width: 480px)": {
-              padding: "16px",
-            },
+            flex: 1,
+            display: "flex",
+            flexDirection: "column",
+            justifyContent: "space-between",
+            p: { xs: 2, sm: 4, md: 6 },
           }}
         >
-          <CardContent>
-            <Box
-              component="img"
-              src="/EABuildingWorksLTD.png"
-              alt="EA Building Works LTD"
-              sx={{
-                width: 220,
-                height: "auto",
-                marginBottom: "16px",
-                display: "block",
-                margin: "0 auto",
-                "@media (max-width: 480px)": {
-                  width: 180,
-                },
-              }}
-            />
-            <Box sx={{ marginBottom: "16px" }}>
-              <LoginIcon sx={{ fontSize: 40, color: "text.secondary" }} />
+          {/* Top row: brand logo */}
+          <Box
+            sx={{
+              display: "flex",
+              justifyContent: "flex-start",
+              alignItems: "center",
+            }}
+          >
+            <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+              <img
+                src="/EABuildingWorksLTD.png"
+                alt="EA Building Works"
+                style={{ width: 120, height: "auto" }}
+              />
             </Box>
-            <Typography
-              variant="h5"
-              fontWeight="bold"
-              sx={{
-                marginBottom: "8px",
-                fontSize: "1.5rem",
-                "@media (max-width: 480px)": {
-                  fontSize: "1.25rem",
-                },
-              }}
-            >
-              Login With Your Credentials
+          </Box>
+
+          {/* Middle content */}
+          <Box>
+            <Typography variant="h4" sx={{ fontWeight: "bold", mb: 1 }}>
+              {welcomeText}
             </Typography>
-            <Typography
-              variant="body2"
-              color="text.secondary"
-              sx={{
-                marginBottom: "24px",
-                fontSize: "0.875rem",
-                "@media (max-width: 480px)": {
-                  fontSize: "0.75rem",
-                },
-              }}
-            >
-              Please contact admin if you do not have an account or if you have
-              forgotten your password.
+            <Typography variant="body2" sx={{ mb: 3, color: "text.secondary" }}>
+              Sign in to your EA Building Works account
             </Typography>
 
             {/* Username */}
+            <Typography variant="subtitle1" sx={{ mb: 1 }}>
+              Username
+            </Typography>
             <TextField
-              label="Username"
+              placeholder="Geoffrey Mott"
+              variant="outlined"
               fullWidth
-              margin="normal"
+              inputRef={usernameRef}
               value={credentials.username}
               onChange={(e) =>
                 setCredentials({ ...credentials, username: e.target.value })
               }
-              sx={{
-                "@media (max-width: 480px)": {
-                  marginBottom: "16px",
-                },
-              }}
+              sx={{ mb: 2 }}
             />
+
             {/* Password */}
+            <Typography variant="subtitle1" sx={{ mb: 1 }}>
+              Password
+            </Typography>
             <TextField
-              label="Password"
-              type="password"
+              placeholder="********"
+              variant="outlined"
               fullWidth
-              margin="normal"
+              type="password"
               value={credentials.password}
               onChange={(e) =>
                 setCredentials({ ...credentials, password: e.target.value })
               }
-              sx={{
-                "@media (max-width: 480px)": {
-                  marginBottom: "24px",
-                },
-              }}
+              sx={{ mb: 2 }}
             />
-            <Button
-              variant="contained"
-              fullWidth
-              onClick={handleLogin}
+
+            {/* Remember me + Forgot links */}
+            <Box
               sx={{
-                backgroundColor: "#000",
-                color: "#fff",
-                padding: "12px 0",
-                marginTop: "16px",
-                fontWeight: "bold",
-                "&:hover": { backgroundColor: "#333" },
-                "@media (max-width: 480px)": {
-                  padding: "10px 0",
-                  fontSize: "0.875rem",
-                },
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "space-between",
+                mb: 3,
               }}
             >
-              Login
+              <FormControlLabel
+                control={
+                  <Checkbox
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                  />
+                }
+                label="Remember me"
+              />
+              <Box sx={{ display: "flex", gap: 2 }}>
+                <Typography
+                  variant="body2"
+                  sx={{ cursor: "pointer", textDecoration: "underline" }}
+                  onClick={() => handleForgotMessage("username")}
+                >
+                  Forgot Username?
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{ cursor: "pointer", textDecoration: "underline" }}
+                  onClick={() => handleForgotMessage("password")}
+                >
+                  Forgot Password?
+                </Typography>
+              </Box>
+            </Box>
+
+            {/* Login button */}
+            <Button
+              variant="contained"
+              sx={{
+                width: "100%",
+                py: 1.2,
+                fontWeight: "bold",
+                backgroundColor: "#7D9B76",
+                "&:hover": {
+                  backgroundColor: "#6c8c67",
+                },
+              }}
+              onClick={handleLogin}
+            >
+              {loading ? "Loading..." : "Login"}
             </Button>
+
             {/* Error message */}
             {error && (
-              <Typography
-                variant="body2"
-                color="red"
-                align="center"
-                sx={{
-                  marginTop: "16px",
-                  fontSize: "0.875rem",
-                  "@media (max-width: 480px)": {
-                    fontSize: "0.75rem",
-                  },
-                }}
-              >
+              <Typography variant="body2" color="error" sx={{ mt: 2 }}>
                 {error}
               </Typography>
             )}
-          </CardContent>
-        </Card>
-      </Box>
-    </Box>
-  );
-};
+          </Box>
 
-export default Login;
+          {/* Footer disclaimers */}
+          <Typography variant="caption" sx={{ color: "text.secondary" }}>
+            © 2025 EA Building Works. All rights reserved.
+          </Typography>
+        </Box>
+
+        {/* Right Column: big house image (hidden on mobile) */}
+        <Box
+          sx={{
+            flex: 1,
+            backgroundColor: "#eee",
+            backgroundImage: 'url("/LoginImage.jpg")',
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            display: { xs: "none", md: "block" },
+            borderRadius: "25px",
+            margin: "15px",
+          }}
+        />
+      </Box>
+
+      {/* Snackbar for "Forgot" messages */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleSnackbarClose}
+        anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
+      >
+        <Alert
+          onClose={handleSnackbarClose}
+          severity="info"
+          sx={{ width: "100%" }}
+        >
+          {snackbarMessage}
+        </Alert>
+      </Snackbar>
+    </>
+  );
+}
