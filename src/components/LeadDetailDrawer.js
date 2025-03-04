@@ -1,3 +1,4 @@
+// src/components/LeadDetailDrawer.js
 import React, { useState, useEffect } from "react";
 import {
   Drawer,
@@ -25,18 +26,36 @@ import DoubleArrowIcon from "@mui/icons-material/DoubleArrow";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CircleIcon from "@mui/icons-material/Circle";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
-import { formatTimestamp, formatDayOfWeek } from "../utils/dateUtils";
-import { formatWithCommas } from "../utils/dateUtils";
+
+import {
+  formatTimestamp,
+  formatDayOfWeek,
+  formatWithCommas,
+} from "../utils/dateUtils";
+
 import { v4 as uuidv4 } from "uuid";
 import useLocalStorageState from "../hooks/useLocalStorageState";
-import ContractModal from "../components/ContractModal";
-import AppointmentModal from "../components/AppointmentModal";
-import StageModal from "../components/StageModal";
-import ProposalModal from "../components/ProposalModal";
-import NotesSection from "../components/NotesSection";
-import ProjectMediaTab from "../components/ProjectMediaTab";
+import ContractModal from "./ContractModal";
+import AppointmentModal from "./AppointmentModal";
+import StageModal from "./StageModal";
+import ProposalModal from "./ProposalModal";
+import NotesSection from "./NotesSection";
+import ProjectMediaTab from "./ProjectMediaTab";
 
 import "./LeadDetailDrawer.css";
+
+/** 
+ * List of possible stages. Extracted for clarity/maintainability.
+ * Make sure these match all references throughout the code.
+ */
+const STAGES = [
+  "New Lead",
+  "Quote Sent",
+  "In Progress",
+  "Completed",
+  "Cancelled",
+  "No Answer",
+];
 
 export default function LeadDetailDrawer({ open, onClose, lead }) {
   const [allLeadData, setAllLeadData] = useLocalStorageState("myLeadData", {});
@@ -51,101 +70,146 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
   const [proposalMenuAnchor, setProposalMenuAnchor] = useState(null);
   const [proposalMenuTarget, setProposalMenuTarget] = useState(null);
 
-  // Helper: Create an activity log entry
+  // ----- Activity Helpers -----
+
+  // Creates a general activity entry
   function createActivity(title, subtext) {
     return { id: uuidv4(), timestamp: Date.now(), title, subtext };
   }
 
-  // Initialize lead data once the lead is available
-  useEffect(() => {
-    if (lead && lead._id && !allLeadData[lead._id]) {
-      const initialLeadObj = {
-        contractAmount: "",
-        stage: lead.stage || "New Lead",
-        customerName: lead.fullName || "",
-        appointmentDate: null,
-        notes: [],
-        proposals: [],
-        media: {
-          before: [],
-          after: [],
-          documents: [],
-        },
-        activities: [
-          createActivity(
-            `Stage: New Lead added for ${lead.builder || "unknown"}`,
-            `Lead has been submitted on ${formatTimestamp(lead.timestamp)}`
-          ),
-        ],
-      };
-      setAllLeadData((prev) => ({ ...prev, [lead._id]: initialLeadObj }));
+  // Creates an appointment activity based on old vs new date
+  function getAppointmentActivity(oldDate, newDate) {
+    if (!newDate && oldDate) {
+      return createActivity("Appointment Deleted", "User removed the appointment date/time.");
     }
-  }, [lead, allLeadData, setAllLeadData]);
+    if (!oldDate && newDate) {
+      return createActivity(
+        "Appointment Created",
+        `Appointment set on ${formatTimestamp(newDate)}`
+      );
+    }
+    if (oldDate && newDate) {
+      return createActivity(
+        "Appointment Updated",
+        `Appointment changed from ${formatTimestamp(oldDate)} to ${formatTimestamp(newDate)}`
+      );
+    }
+    return null;
+  }
 
+  // Creates a stage change activity if needed
+  function getStageActivity(oldStage, newStage) {
+    if (newStage !== oldStage) {
+      return createActivity(
+        `Stage: ${oldStage} → ${newStage}`,
+        `Lead has been moved to the ${newStage} stage.`
+      );
+    }
+    return null;
+  }
+
+  // Creates a contract amount change activity if needed
+  function getContractActivity(oldAmount, newAmount) {
+    if (newAmount !== oldAmount) {
+      return createActivity(
+        "Contract Amount Updated",
+        `Contract changed from £${oldAmount || "0"} to £${newAmount}`
+      );
+    }
+    return null;
+  }
+
+  // ----- End Activity Helpers -----
+
+  /**
+   * On every render of a valid lead, ensure `myLeadData[lead._id]`
+   * has address & builder. If it doesn't exist, we create it.
+   * If it does exist but is missing those fields, we add them.
+   */
+  useEffect(() => {
+    if (!lead || !lead._id) return;
+
+    setAllLeadData((prev) => {
+      const oldObj = prev[lead._id];
+
+      // If this lead isn't in localStorage yet
+      if (!oldObj) {
+        const newLeadObj = {
+          address: lead.address || "",
+          builder: lead.builder || "",
+          stage: lead.stage || "New Lead",
+          customerName: lead.fullName || "",
+          contractAmount: "",
+          appointmentDate: null,
+          notes: [],
+          proposals: [],
+          media: {
+            before: [],
+            after: [],
+            documents: [],
+          },
+          activities: [
+            createActivity(
+              `Stage: New Lead added for ${lead.builder || "unknown"}`,
+              `Lead has been submitted on ${formatTimestamp(lead.timestamp)}`
+            ),
+          ],
+        };
+        return { ...prev, [lead._id]: newLeadObj };
+      }
+
+      // Otherwise, patch missing address/builder if needed
+      const updated = { ...oldObj };
+      let changed = false;
+
+      if (!updated.address && lead.address) {
+        updated.address = lead.address;
+        changed = true;
+      }
+      if (!updated.builder && lead.builder) {
+        updated.builder = lead.builder;
+        changed = true;
+      }
+
+      return changed ? { ...prev, [lead._id]: updated } : prev;
+    });
+  }, [lead, setAllLeadData]);
+
+  // If lead is invalid, render nothing
   if (!lead || !lead._id) {
     return null;
   }
 
+  // Lead data from local storage
   const leadObj = allLeadData[lead._id] || {};
 
-  // Update lead data with new changes and record activity logs
+  // ----- Update Logic -----
+
+  /**
+   * Merges `changes` into the existing lead data in local storage,
+   * plus any activity log entries for stage, contract, or appointment changes.
+   */
   function updateLeadData(changes) {
     setAllLeadData((prev) => {
       const oldData = prev[lead._id] || {};
-      let updatedActivities = oldData.activities || [];
+      const updatedActivities = [...(oldData.activities || [])];
 
-      if ("stage" in changes && changes.stage !== oldData.stage) {
-        updatedActivities = [
-          ...updatedActivities,
-          createActivity(
-            `Stage: ${oldData.stage} → ${changes.stage}`,
-            `Lead has been moved to the ${changes.stage} stage.`
-          ),
-        ];
+      // Stage changes
+      if ("stage" in changes) {
+        const stageAct = getStageActivity(oldData.stage, changes.stage);
+        if (stageAct) updatedActivities.push(stageAct);
       }
-      if (
-        "contractAmount" in changes &&
-        changes.contractAmount !== oldData.contractAmount
-      ) {
-        updatedActivities = [
-          ...updatedActivities,
-          createActivity(
-            "Contract Amount Updated",
-            `Contract changed from £${oldData.contractAmount || "0"} to £${changes.contractAmount}`
-          ),
-        ];
+
+      // Contract changes
+      if ("contractAmount" in changes) {
+        const contractAct = getContractActivity(oldData.contractAmount, changes.contractAmount);
+        if (contractAct) updatedActivities.push(contractAct);
       }
-      if (
-        "appointmentDate" in changes &&
-        changes.appointmentDate !== oldData.appointmentDate
-      ) {
-        if (!changes.appointmentDate && oldData.appointmentDate) {
-          updatedActivities = [
-            ...updatedActivities,
-            createActivity(
-              "Appointment Deleted",
-              "User removed the appointment date/time."
-            ),
-          ];
-        } else if (!oldData.appointmentDate && changes.appointmentDate) {
-          updatedActivities = [
-            ...updatedActivities,
-            createActivity(
-              "Appointment Created",
-              `Appointment set on ${formatTimestamp(changes.appointmentDate)}`
-            ),
-          ];
-        } else if (oldData.appointmentDate && changes.appointmentDate) {
-          updatedActivities = [
-            ...updatedActivities,
-            createActivity(
-              "Appointment Updated",
-              `Appointment changed from ${formatTimestamp(
-                oldData.appointmentDate
-              )} to ${formatTimestamp(changes.appointmentDate)}`
-            ),
-          ];
-        }
+
+      // Appointment changes
+      if ("appointmentDate" in changes) {
+        const aptAct = getAppointmentActivity(oldData.appointmentDate, changes.appointmentDate);
+        if (aptAct) updatedActivities.push(aptAct);
       }
 
       return {
@@ -159,19 +223,18 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     });
   }
 
-  // Add a new proposal to the lead
+  // Add a new proposal
   function addProposalToLead(proposal) {
     setAllLeadData((prev) => {
       const oldData = prev[lead._id] || {};
       const oldProposals = oldData.proposals || [];
       const oldActivities = oldData.activities || [];
+
       const newActivities = [
         ...oldActivities,
-        createActivity(
-          "Proposal Created",
-          `Proposal #${proposal.proposalNumber} was created.`
-        ),
+        createActivity("Proposal Created", `Proposal #${proposal.proposalNumber} was created.`),
       ];
+
       return {
         ...prev,
         [lead._id]: {
@@ -188,34 +251,35 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setAllLeadData((prev) => {
       const oldData = prev[lead._id] || {};
       const oldProposals = oldData.proposals || [];
-      const updatedProposals = oldProposals.map((p) => {
-        if (p.id === proposalId) {
-          return { ...p, status: newStatus };
-        }
-        return p;
-      });
+
+      const updatedProposals = oldProposals.map((p) =>
+        p.id === proposalId ? { ...p, status: newStatus } : p
+      );
+
       const newActivity = createActivity(
         "Proposal Status Updated",
         `Proposal #${proposalId} changed status to ${newStatus}`
       );
-      const newActivities = [...(oldData.activities || []), newActivity];
+
       return {
         ...prev,
         [lead._id]: {
           ...oldData,
           proposals: updatedProposals,
-          activities: newActivities,
+          activities: [...(oldData.activities || []), newActivity],
         },
       };
     });
   }
 
-  // Handler to update media in lead data
+  // Handler for media updates
   const handleSaveMedia = (newMedia) => {
     updateLeadData({ media: newMedia });
   };
 
-  // Handlers for modals
+  // ----- Modal Handlers -----
+
+  // Contract Modal
   const handleOpenContractModal = () => {
     setOpenContractModal(true);
   };
@@ -228,6 +292,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenContractModal(false);
   };
 
+  // Appointment Modal
   const handleOpenDateModal = () => {
     setOpenDateModal(true);
   };
@@ -236,6 +301,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenDateModal(false);
   };
 
+  // Stage Modal
   const handleOpenStageModal = () => {
     setOpenStageModal(true);
   };
@@ -244,6 +310,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenStageModal(false);
   };
 
+  // Proposal Modal
   const handleOpenProposalModal = () => {
     const randomNumber = Math.floor(100000 + Math.random() * 900000).toString();
     setTempProposal({
@@ -262,6 +329,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenProposalModal(false);
   };
 
+  // Proposal Menu
   const handleProposalMenuOpen = (e, proposal) => {
     setProposalMenuAnchor(e.currentTarget);
     setProposalMenuTarget(proposal);
@@ -276,6 +344,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     handleProposalMenuClose();
   };
 
+  // Deleting appointment
   const confirmDeleteAppointment = () => {
     setOpenDeleteDialog(false);
     updateLeadData({ appointmentDate: null });
@@ -284,14 +353,16 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenDeleteDialog(false);
   };
 
-  // Function to add a new note
+  // Adding a new note
   const handleAddNote = (noteContent) => {
     setAllLeadData((prev) => {
       const oldData = prev[lead._id] || {};
       const oldNotes = oldData.notes || [];
       const oldActivities = oldData.activities || [];
+
       const noteObj = { id: uuidv4(), timestamp: Date.now(), content: noteContent };
       const noteActivity = createActivity("Note Added", `User added a note: "${noteContent}"`);
+
       return {
         ...prev,
         [lead._id]: {
@@ -303,7 +374,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     });
   };
 
-  // Derived display values
+  // ----- Derived Display Values -----
   const displayedName = leadObj.customerName || "";
   const displayedAmount = leadObj.contractAmount || "0";
   const dealNumberString = `Lead # ${formatTimestamp(lead.timestamp)}`;
@@ -321,7 +392,10 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
         open={open}
         onClose={onClose}
         PaperProps={{
-          sx: { width: "75vw" },
+          // Ensure better mobile responsiveness:
+          sx: {
+            width: { xs: "100vw", md: "75vw" },
+          },
         }}
       >
         <Box className="drawer-topbar">
@@ -466,23 +540,9 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
             </Box>
 
             <Box className="timeline-container">
-              {[
-                "New Lead",
-                "In Progress",
-                "Quote Sent",
-                "Accepted",
-                "Rejected",
-                "Cancelled",
-              ].map((stgName, idx) => {
+              {STAGES.map((stgName, idx) => {
                 let pillClass = "timeline-step";
-                const stgIdx = [
-                  "New Lead",
-                  "In Progress",
-                  "Quote Sent",
-                  "Accepted",
-                  "Rejected",
-                  "Cancelled",
-                ].indexOf(leadObj.stage);
+                const stgIdx = STAGES.indexOf(leadObj.stage);
                 if (stgIdx >= 0) {
                   if (idx < stgIdx) pillClass += " done";
                   else if (idx === stgIdx) pillClass += " active";
@@ -594,8 +654,9 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                 </Box>
                 {!leadObj.appointmentDate && (
                   <Typography variant="body2" sx={{ color: "#999", mb: 2 }}>
-                    No date/time selected. Please use the Create Appointment button or click on
-                    the calendar icon next to the Update Contract button to set an appointment.
+                    No date/time selected. Please use the Create Appointment
+                    button or click on the calendar icon next to the Update
+                    Contract button to set an appointment.
                   </Typography>
                 )}
                 {leadObj.appointmentDate && (
@@ -608,6 +669,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                         {appointmentDateString}
                       </Typography>
                     </Box>
+
                     <Box className="appointment-center">
                       <Box className="appointment-title-row">
                         <CircleIcon sx={{ fontSize: "0.7rem", color: "#27ae60" }} />
@@ -616,10 +678,10 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
                         </Typography>
                       </Box>
                       <Typography className="appointment-location">
-                        {lead.address || "No address set"}
+                        {leadObj.address || "No address set"}
                       </Typography>
                       <Typography className="appointment-person">
-                        {lead.builder || "No builder assigned"}
+                        {leadObj.builder || "No builder assigned"}
                       </Typography>
                     </Box>
                     <IconButton onClick={(e) => setAnchorEl(e.currentTarget)}>

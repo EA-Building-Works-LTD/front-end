@@ -52,7 +52,7 @@ const MyLeads = () => {
     "New Lead",
     "In Progress",
     "Quote Sent",
-    "Accepted",
+    "Completed",
     "Rejected",
     "Cancelled",
   ];

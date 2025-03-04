@@ -13,9 +13,9 @@ const pipelineStages = [
   "New Lead",
   "In Progress",
   "Quote Sent",
-  "Accepted",
-  "Rejected",
+  "Completed",
   "Cancelled",
+  "No Answer",
 ];
 
 export default function StageModal({ open, onClose, currentStage, onSave }) {

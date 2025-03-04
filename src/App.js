@@ -17,11 +17,16 @@ import { Routes, Route, Navigate, Link } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
-import BuildIcon from "@mui/icons-material/Build";
+import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DescriptionIcon from "@mui/icons-material/Description";
 import LogoutIcon from "@mui/icons-material/Logout";
-import { jwtDecode } from "jwt-decode";
+
+// POINT 2: Use CircularProgress for a nicer loading indicator
+import CircularProgress from "@mui/material/CircularProgress"; 
+
+// Import jwtDecode as the default if that's how your project uses it
+import {jwtDecode} from "jwt-decode";
 
 import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
@@ -33,8 +38,6 @@ import MyLeads from "./components/MyLeads";
 import Login from "./components/Login";
 import DashboardPage from "./components/Dashboard";
 import LeadDetailMobile from "./components/LeadDetailMobile";
-
-// New placeholders for builder pages
 import AppointmentsPage from "./components/AppointmentsPage";
 import ProposalsPage from "./components/ProposalsPage";
 
@@ -78,7 +81,7 @@ function App() {
     setAuthChecked(true);
   }, []);
 
-  // Toggle drawer
+  // POINT 5: Ensure toggleDrawer is memoized with no dependencies
   const toggleDrawer = useCallback(() => {
     setDrawerOpen((prev) => !prev);
   }, []);
@@ -92,9 +95,13 @@ function App() {
     setDrawerOpen(false);
   };
 
-  // If auth not checked, show loading
+  // POINT 2: Replace "Loading..." with a nicer spinner
   if (!authChecked) {
-    return <div>Loading...</div>;
+    return (
+      <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
@@ -178,7 +185,7 @@ function App() {
                         onClick={toggleDrawer}
                       >
                         <ListItemIcon className="sidebar-listicon">
-                          <BuildIcon />
+                          <NoteAltIcon />
                         </ListItemIcon>
                         <BoldListItemText primary="My Leads" />
                       </ListItemButton>
@@ -252,8 +259,6 @@ function App() {
                       <>
                         <Route path="/my-leads" element={<MyLeads />} />
                         <Route path="/my-leads/:slug" element={<LeadDetailMobile />} />
-
-                        {/* Additional builder pages */}
                         <Route path="/appointments" element={<AppointmentsPage />} />
                         <Route path="/proposals" element={<ProposalsPage />} />
                       </>
@@ -272,6 +277,7 @@ function App() {
                     />
                   </>
                 )}
+
                 {/* Login route */}
                 <Route path="/login" element={<Login setUser={setUser} />} />
               </Routes>

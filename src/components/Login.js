@@ -12,7 +12,10 @@ import {
   CssBaseline,
   Snackbar,
   Alert,
+  IconButton,
+  InputAdornment,
 } from "@mui/material";
+import { Visibility, VisibilityOff, AccountCircle, Lock } from "@mui/icons-material";
 
 export default function Login({ setUser }) {
   const [credentials, setCredentials] = useState({
@@ -26,12 +29,14 @@ export default function Login({ setUser }) {
   const [roleFromStorage, setRoleFromStorage] = useState(null);
   const [usernameFromStorage, setUsernameFromStorage] = useState("");
 
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  const [snackbarMessage, setSnackbarMessage] = useState("");
+
   const navigate = useNavigate();
   const usernameRef = useRef(null);
 
-  // State for showing "Forgot" messages in a Snackbar
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
-  const [snackbarMessage, setSnackbarMessage] = useState("");
+  // Password visibility toggle
+  const [showPassword, setShowPassword] = useState(false);
 
   // Load role & username from localStorage (if already logged in) and check if "rememberMe" was set
   useEffect(() => {
@@ -40,7 +45,6 @@ export default function Login({ setUser }) {
     if (storedRole) setRoleFromStorage(storedRole);
     if (storedUsername) setUsernameFromStorage(storedUsername);
 
-    // Check if user previously chose to remember their username
     const remembered = localStorage.getItem("rememberMe") === "true";
     const rememberedUsername = localStorage.getItem("rememberedUsername");
     if (remembered && rememberedUsername) {
@@ -64,6 +68,7 @@ export default function Login({ setUser }) {
     }
     setLoading(true);
     setError("");
+
     try {
       const response = await axios.post(
         `${process.env.REACT_APP_API_URL}/api/login`,
@@ -116,10 +121,10 @@ export default function Login({ setUser }) {
     setSnackbarOpen(true);
   };
 
-  // Close Snackbar
-  const handleSnackbarClose = () => {
-    setSnackbarOpen(false);
-    setSnackbarMessage("");
+
+  // Toggle password visibility
+  const toggleShowPassword = () => {
+    setShowPassword((prev) => !prev);
   };
 
   // Decide welcome text based on role
@@ -178,12 +183,9 @@ export default function Login({ setUser }) {
               Sign in to your EA Building Works account
             </Typography>
 
-            {/* Username */}
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Username
-            </Typography>
+            {/* Username with icon inside */}
             <TextField
-              placeholder="Username"
+              label="Username"
               variant="outlined"
               fullWidth
               inputRef={usernameRef}
@@ -192,22 +194,44 @@ export default function Login({ setUser }) {
                 setCredentials({ ...credentials, username: e.target.value })
               }
               sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <AccountCircle />
+                  </InputAdornment>
+                ),
+              }}
             />
 
-            {/* Password */}
-            <Typography variant="subtitle1" sx={{ mb: 1 }}>
-              Password
-            </Typography>
+            {/* Password with icon inside and eye toggle */}
             <TextField
-              placeholder="********"
+              label="Password"
               variant="outlined"
               fullWidth
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={credentials.password}
               onChange={(e) =>
                 setCredentials({ ...credentials, password: e.target.value })
               }
               sx={{ mb: 2 }}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <Lock />
+                  </InputAdornment>
+                ),
+                endAdornment: (
+                  <InputAdornment position="end">
+                    <IconButton
+                      onClick={toggleShowPassword}
+                      edge="end"
+                      aria-label="toggle password visibility"
+                    >
+                      {showPassword ? <VisibilityOff /> : <Visibility />}
+                    </IconButton>
+                  </InputAdornment>
+                ),
+              }}
             />
 
             {/* Remember me + Forgot links */}
@@ -296,11 +320,11 @@ export default function Login({ setUser }) {
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}
-        onClose={handleSnackbarClose}
+        onClose={() => setSnackbarOpen(false)}
         anchorOrigin={{ vertical: "bottom", horizontal: "center" }}
       >
         <Alert
-          onClose={handleSnackbarClose}
+          onClose={() => setSnackbarOpen(false)}
           severity="info"
           sx={{ width: "100%" }}
         >

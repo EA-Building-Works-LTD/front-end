@@ -1,24 +1,32 @@
+// src/pages/AppointmentsPage.js
+
 import { Box, Typography } from "@mui/material";
 import CircleIcon from "@mui/icons-material/Circle";
 import useLocalStorageState from "../hooks/useLocalStorageState";
 import { formatDayOfWeek, formatTimestamp } from "../utils/dateUtils";
 import "./AppointmentsPage.css";
 
+/**
+ * Gather all appointments from local storage.
+ * We rely on leadObj.address/builder, which must
+ * be stored in LeadDetailDrawer's "initialLeadObj".
+ */
 function getAllAppointments(myLeadData) {
   const results = [];
   for (const leadId in myLeadData) {
     const leadObj = myLeadData[leadId];
+    // Must have an appointmentDate to be considered
     if (leadObj && leadObj.appointmentDate) {
       results.push({
         leadId,
         customerName: leadObj.customerName || "Unknown",
-        address: leadObj.address || "",
-        builder: leadObj.builder || "",
+        address: leadObj.address || "", // same field as in LeadDetailDrawer
+        builder: leadObj.builder || "", // same field
         appointmentDate: leadObj.appointmentDate,
       });
     }
   }
-  // Sort by date ascending
+  // Sort by earliest appointment date
   results.sort((a, b) => a.appointmentDate - b.appointmentDate);
   return results;
 }
@@ -26,7 +34,7 @@ function getAllAppointments(myLeadData) {
 export default function AppointmentsPage() {
   const [myLeadData] = useLocalStorageState("myLeadData", {});
 
-  // Gather all appointments
+  // Build the list of appointments
   const appointments = getAllAppointments(myLeadData);
 
   return (
