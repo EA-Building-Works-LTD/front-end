@@ -38,12 +38,12 @@ import { v4 as uuidv4 } from "uuid";
 import useLocalStorageState from "../hooks/useLocalStorageState";
 
 // Components (same functionality as desktop)
-import NotesSection from "./NotesSection";
+import NotesSection from './NotesSection';
 import ProjectMediaTab from "./ProjectMediaTab";
-import StageModal from "./StageModal";
-import AppointmentModal from "./AppointmentModal";
-import ContractModal from "./ContractModal";
-import ProposalModal from "./ProposalModal";
+import StageModal from './StageModal';
+import AppointmentModal from './AppointmentModal';
+import ContractModal from './ContractModal';
+import ProposalModal from './ProposalModal';
 
 // CSS
 import "./LeadDetailMobile.css";

@@ -12,6 +12,7 @@ import {
   IconButton,
   AppBar,
   useMediaQuery,
+  CircularProgress,
 } from "@mui/material";
 import { Routes, Route, Navigate, Link } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -21,40 +22,40 @@ import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DescriptionIcon from "@mui/icons-material/Description";
 import LogoutIcon from "@mui/icons-material/Logout";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 
-// POINT 2: Use CircularProgress for a nicer loading indicator
-import CircularProgress from "@mui/material/CircularProgress"; 
-
-// Import jwtDecode as the default if that's how your project uses it
+// IMPORTANT: Import jwtDecode as default from 'jwt-decode'
 import {jwtDecode} from "jwt-decode";
 
 import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
 import theme from "./theme";
 
-// Import your pages/components
+// Your custom components
+import CalendarView from "./components/Calendar/CalendarView";
 import Leads from "./components/Leads";
 import MyLeads from "./components/MyLeads";
 import Login from "./components/Login";
-import DashboardPage from "./components/Dashboard";
+import Dashboard from "./components/Dashboard";
 import LeadDetailMobile from "./components/LeadDetailMobile";
 import AppointmentsPage from "./components/AppointmentsPage";
 import ProposalsPage from "./components/ProposalsPage";
 
+// Context providers
 import { LeadsProvider } from "./components/LeadsContext";
 import { UserRoleProvider } from "./components/UserRoleContext";
+
+// UI
 import BoldListItemText from "./components/BoldListItemText";
 
 const drawerWidth = 230;
 
 function App() {
-  // Authentication state
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width:1025px)");
 
-  // Check token on mount
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
@@ -81,12 +82,10 @@ function App() {
     setAuthChecked(true);
   }, []);
 
-  // POINT 5: Ensure toggleDrawer is memoized with no dependencies
   const toggleDrawer = useCallback(() => {
     setDrawerOpen((prev) => !prev);
   }, []);
 
-  // Logout
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("role");
@@ -95,7 +94,7 @@ function App() {
     setDrawerOpen(false);
   };
 
-  // POINT 2: Replace "Loading..." with a nicer spinner
+  // Show spinner until auth check is done
   if (!authChecked) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
@@ -106,8 +105,9 @@ function App() {
 
   return (
     <ThemeProvider theme={theme}>
-      <UserRoleProvider role={user?.role || "guest"}>
-        <LeadsProvider user={user}>
+      {/* Missing curly brace added here ↓↓↓ */}
+      <UserRoleProvider value={user?.role || "guest"}>
+        <LeadsProvider>
           <Box className="app-container">
             <CssBaseline />
 
@@ -213,6 +213,18 @@ function App() {
                         </ListItemIcon>
                         <BoldListItemText primary="Proposals" />
                       </ListItemButton>
+
+                      <ListItemButton
+                        component={Link}
+                        to="/calendar"
+                        className="sidebar-listitem"
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <CalendarTodayIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Calendar" />
+                      </ListItemButton>
                     </>
                   )}
                 </List>
@@ -240,7 +252,7 @@ function App() {
               }}
             >
               <Routes>
-                {/* Not logged in => redirect to /login */}
+                {/* If not logged in => redirect to /login */}
                 {!user ? (
                   <Route path="*" element={<Navigate to="/login" replace />} />
                 ) : (
@@ -248,7 +260,7 @@ function App() {
                     {/* Admin Routes */}
                     {user.role === "admin" && (
                       <>
-                        <Route path="/dashboard" element={<DashboardPage />} />
+                        <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/leads" element={<Leads />} />
                         <Route path="/my-leads" element={<MyLeads />} />
                       </>
@@ -261,6 +273,7 @@ function App() {
                         <Route path="/my-leads/:slug" element={<LeadDetailMobile />} />
                         <Route path="/appointments" element={<AppointmentsPage />} />
                         <Route path="/proposals" element={<ProposalsPage />} />
+                        <Route path="/calendar" element={<CalendarView />} />
                       </>
                     )}
 
@@ -277,7 +290,6 @@ function App() {
                     />
                   </>
                 )}
-
                 {/* Login route */}
                 <Route path="/login" element={<Login setUser={setUser} />} />
               </Routes>

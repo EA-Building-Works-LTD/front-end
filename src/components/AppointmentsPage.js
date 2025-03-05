@@ -2,8 +2,8 @@
 
 import { Box, Typography } from "@mui/material";
 import CircleIcon from "@mui/icons-material/Circle";
-import useLocalStorageState from "../hooks/useLocalStorageState";
-import { formatDayOfWeek, formatTimestamp } from "../utils/dateUtils";
+import useLocalStorageState from '../hooks/useLocalStorageState';
+import { formatDayOfWeek, formatTimestamp } from '../utils/dateUtils';
 import "./AppointmentsPage.css";
 
 /**
