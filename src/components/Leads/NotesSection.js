@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { Box, Typography, TextField, Button } from "@mui/material";
 // Update imports
-import { formatTimestamp } from '../utils/dateUtils';
+import { formatTimestamp } from '../../utils/dateUtils';
 
 export default function NotesSection({ leadObj, leadId, onAddNote }) {
   const [tempNote, setTempNote] = useState("");

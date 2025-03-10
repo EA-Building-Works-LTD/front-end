@@ -13,7 +13,7 @@ import {
 import AddIcon from '@mui/icons-material/Add';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import useLocalStorageState from '../../hooks/useLocalStorageState';
-import EventModal from '../EventModal';
+import EventModal from '../Appointments/EventModal';
 import CalendarFilters from './CalendarFilters';
 import { formatCalendarEvents } from './calendarUtils';
 import 'react-big-calendar/lib/css/react-big-calendar.css';

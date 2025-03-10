@@ -26,7 +26,7 @@ import { Search, FilterList, ArrowBack, ArrowForward } from "@mui/icons-material
 import axios from "axios";
 import LeadDetailDrawer from "./LeadDetailDrawer";
 import { useNavigate } from "react-router-dom";
-import useLocalStorageState from "../hooks/useLocalStorageState";
+import useLocalStorageState from "../../hooks/useLocalStorageState";
 import "./MyLeads.css";
 
 const MyLeads = () => {

@@ -121,7 +121,6 @@ export default function Login({ setUser }) {
     setSnackbarOpen(true);
   };
 
-
   // Toggle password visibility
   const toggleShowPassword = () => {
     setShowPassword((prev) => !prev);

@@ -13,8 +13,12 @@ import {
   AppBar,
   useMediaQuery,
   CircularProgress,
+  Typography,
+  Divider,
+  Tooltip,
+  Avatar,
 } from "@mui/material";
-import { Routes, Route, Navigate, Link } from "react-router-dom";
+import { Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
 import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
@@ -23,42 +27,52 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DescriptionIcon from "@mui/icons-material/Description";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
 // IMPORTANT: Import jwtDecode as default from 'jwt-decode'
-import {jwtDecode} from "jwt-decode";
+import { jwtDecode } from "jwt-decode";
 
-import { ThemeProvider } from "@mui/material/styles";
+import { ThemeProvider, useTheme } from "@mui/material/styles";
 import "./App.css";
 import theme from "./theme";
 
 // Your custom components
 import CalendarView from "./components/Calendar/CalendarView";
-import Leads from "./components/Leads";
-import MyLeads from "./components/MyLeads";
-import Login from "./components/Login";
+import Leads from "./components/Leads/Leads";
+import MyLeads from "./components/Leads/MyLeads";
+import Login from "./components/Auth/Login";
 import Dashboard from "./components/Dashboard";
-import LeadDetailMobile from "./components/LeadDetailMobile";
-import AppointmentsPage from "./components/AppointmentsPage";
+import LeadDetailMobile from "./components/Leads/LeadDetailMobile";
+import AppointmentsPage from "./components/Appointments/AppointmentsPage";
 import ProposalsPage from "./components/ProposalsPage";
 
 // Context providers
-import { LeadsProvider } from "./components/LeadsContext";
-import { UserRoleProvider } from "./components/UserRoleContext";
+import { LeadsProvider } from "./components/Leads/LeadsContext";
+import { UserRoleProvider } from "./components/Auth/UserRoleContext";
 
 // UI
-import BoldListItemText from "./components/BoldListItemText";
+import BoldListItemText from "./components/Common/BoldListItemText";
 
-const drawerWidth = 230;
+const drawerWidth = 250;
 
 function App() {
   const [user, setUser] = useState(null);
   const [authChecked, setAuthChecked] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width:1025px)");
+  const isTablet = useMediaQuery("(min-width:601px) and (max-width:1024px)");
+  const isMobile = useMediaQuery("(max-width:600px)");
+  const location = useLocation();
+  const [username, setUsername] = useState("");
 
   useEffect(() => {
     const token = localStorage.getItem("token");
     const role = localStorage.getItem("role");
+    const storedUsername = localStorage.getItem("username");
+
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
 
     if (!token || !role) {
       setAuthChecked(true);
@@ -94,18 +108,34 @@ function App() {
     setDrawerOpen(false);
   };
 
+  // Check if a menu item is active
+  const isActive = (path) => {
+    return location.pathname.includes(path);
+  };
+
   // Show spinner until auth check is done
   if (!authChecked) {
     return (
       <Box sx={{ display: "flex", justifyContent: "center", mt: 4 }}>
-        <CircularProgress />
+        <CircularProgress color="primary" />
       </Box>
     );
   }
 
+  // Get current page title
+  const getPageTitle = () => {
+    const path = location.pathname;
+    if (path.includes('dashboard')) return 'Dashboard';
+    if (path.includes('leads') && !path.includes('my-leads')) return 'Leads';
+    if (path.includes('my-leads')) return 'My Leads';
+    if (path.includes('appointments')) return 'Appointments';
+    if (path.includes('proposals')) return 'Proposals';
+    if (path.includes('calendar')) return 'Calendar';
+    return 'EA Building Works CRM';
+  };
+
   return (
     <ThemeProvider theme={theme}>
-      {/* Missing curly brace added here ↓↓↓ */}
       <UserRoleProvider value={user?.role || "guest"}>
         <LeadsProvider>
           <Box className="app-container">
@@ -124,6 +154,16 @@ function App() {
                   >
                     <MenuIcon />
                   </IconButton>
+                  <Typography variant="h6" component="div" sx={{ flexGrow: 1, fontWeight: 600 }}>
+                    {getPageTitle()}
+                  </Typography>
+                  {username && (
+                    <Tooltip title={username}>
+                      <Avatar sx={{ bgcolor: '#E76F51', width: 36, height: 36, fontSize: '0.9rem' }}>
+                        {username.charAt(0).toUpperCase()}
+                      </Avatar>
+                    </Tooltip>
+                  )}
                 </Toolbar>
               </AppBar>
             )}
@@ -145,15 +185,65 @@ function App() {
                     className="sidebar-logo"
                     onClick={toggleDrawer}
                   />
+                  {!isDesktop && (
+                    <IconButton 
+                      onClick={toggleDrawer}
+                      sx={{ 
+                        position: 'absolute', 
+                        right: 8, 
+                        top: 8, 
+                        color: 'rgba(255,255,255,0.7)',
+                        '&:hover': { color: 'white', bgcolor: 'rgba(0,0,0,0.1)' }
+                      }}
+                    >
+                      <ChevronLeftIcon />
+                    </IconButton>
+                  )}
                 </Toolbar>
+                
+                {username && (
+                  <Box sx={{ 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    padding: '16px 24px',
+                    borderBottom: '1px solid rgba(255,255,255,0.1)'
+                  }}>
+                    <Avatar sx={{ bgcolor: '#E76F51', width: 40, height: 40 }}>
+                      {username.charAt(0).toUpperCase()}
+                    </Avatar>
+                    <Box sx={{ ml: 2 }}>
+                      <Typography variant="body2" sx={{ color: 'white', fontWeight: 600 }}>
+                        {username}
+                      </Typography>
+                      <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)' }}>
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      </Typography>
+                    </Box>
+                  </Box>
+                )}
+                
                 <List className="sidebar-list">
                   {/* Admin Menu */}
                   {user?.role === "admin" && (
                     <>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.5)', 
+                          px: 3, 
+                          py: 1, 
+                          display: 'block',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        Management
+                      </Typography>
                       <ListItemButton
                         component={Link}
                         to="/dashboard"
-                        className="sidebar-listitem"
+                        className={`sidebar-listitem ${isActive('/dashboard') ? 'active' : ''}`}
                         onClick={toggleDrawer}
                       >
                         <ListItemIcon className="sidebar-listicon">
@@ -164,7 +254,7 @@ function App() {
                       <ListItemButton
                         component={Link}
                         to="/leads"
-                        className="sidebar-listitem"
+                        className={`sidebar-listitem ${isActive('/leads') && !isActive('/my-leads') ? 'active' : ''}`}
                         onClick={toggleDrawer}
                       >
                         <ListItemIcon className="sidebar-listicon">
@@ -174,14 +264,28 @@ function App() {
                       </ListItemButton>
                     </>
                   )}
-
+                  
                   {/* Builder Menu */}
                   {user?.role === "builder" && (
                     <>
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.5)', 
+                          px: 3, 
+                          py: 1, 
+                          display: 'block',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        Work Management
+                      </Typography>
                       <ListItemButton
                         component={Link}
                         to="/my-leads"
-                        className="sidebar-listitem"
+                        className={`sidebar-listitem ${isActive('/my-leads') ? 'active' : ''}`}
                         onClick={toggleDrawer}
                       >
                         <ListItemIcon className="sidebar-listicon">
@@ -193,7 +297,7 @@ function App() {
                       <ListItemButton
                         component={Link}
                         to="/appointments"
-                        className="sidebar-listitem"
+                        className={`sidebar-listitem ${isActive('/appointments') ? 'active' : ''}`}
                         onClick={toggleDrawer}
                       >
                         <ListItemIcon className="sidebar-listicon">
@@ -202,10 +306,27 @@ function App() {
                         <BoldListItemText primary="Appointments" />
                       </ListItemButton>
 
+                      <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                      
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.5)', 
+                          px: 3, 
+                          py: 1, 
+                          display: 'block',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        Documents
+                      </Typography>
+
                       <ListItemButton
                         component={Link}
                         to="/proposals"
-                        className="sidebar-listitem"
+                        className={`sidebar-listitem ${isActive('/proposals') ? 'active' : ''}`}
                         onClick={toggleDrawer}
                       >
                         <ListItemIcon className="sidebar-listicon">
@@ -214,10 +335,27 @@ function App() {
                         <BoldListItemText primary="Proposals" />
                       </ListItemButton>
 
+                      <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                      
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.5)', 
+                          px: 3, 
+                          py: 1, 
+                          display: 'block',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        Planning
+                      </Typography>
+
                       <ListItemButton
                         component={Link}
                         to="/calendar"
-                        className="sidebar-listitem"
+                        className={`sidebar-listitem ${isActive('/calendar') ? 'active' : ''}`}
                         onClick={toggleDrawer}
                       >
                         <ListItemIcon className="sidebar-listicon">
@@ -270,8 +408,14 @@ function App() {
                     {user.role === "builder" && (
                       <>
                         <Route path="/my-leads" element={<MyLeads />} />
-                        <Route path="/my-leads/:slug" element={<LeadDetailMobile />} />
-                        <Route path="/appointments" element={<AppointmentsPage />} />
+                        <Route
+                          path="/my-leads/:slug"
+                          element={<LeadDetailMobile />}
+                        />
+                        <Route
+                          path="/appointments"
+                          element={<AppointmentsPage />}
+                        />
                         <Route path="/proposals" element={<ProposalsPage />} />
                         <Route path="/calendar" element={<CalendarView />} />
                       </>

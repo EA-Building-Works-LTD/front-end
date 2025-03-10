@@ -8,17 +8,33 @@
 
 /* Sidebar Drawer */
 .sidebar-drawer {
-  width: 230px;
+  width: 250px;
   flex-shrink: 0;
 }
 
 .sidebar-paper {
-  width: 230px;
+  width: 250px;
   box-sizing: border-box;
-  background-color: #7D9B76;
+  background: linear-gradient(135deg, #264653 0%, #2A9D8F 100%);
   display: flex;
   flex-direction: column;
   height: 100%;
+  box-shadow: 4px 0 10px rgba(0, 0, 0, 0.1);
+  border-right: none;
+  overflow-x: hidden;
+  transition: width 0.3s ease, transform 0.3s ease;
+  animation: slideIn 0.4s ease-out forwards;
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(-20px);
+    opacity: 0.8;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
 }
 
 /* Sidebar Toolbar */
@@ -26,13 +42,22 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  /* padding: 16px 0; */
+  padding: 16px 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.1);
 }
 
 /* Sidebar Logo */
 .sidebar-logo {
-  height: 180px;
-  cursor: pointer; /* Allow clickable logo */
+  height: 120px;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  padding: 8px;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+}
+
+.sidebar-logo:hover {
+  transform: scale(1.05);
 }
 
 /* Sidebar SearchBar */
@@ -43,63 +68,153 @@
 /* Sidebar List */
 .sidebar-list {
   flex-grow: 1;
-  padding: 0;
+  padding: 16px 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+.sidebar-list::-webkit-scrollbar {
+  width: 4px;
+}
+
+.sidebar-list::-webkit-scrollbar-track {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
 }
 
 /* Sidebar ListItem */
 .sidebar-listitem {
-  /* padding-left: 16px; */
+  margin: 4px 12px;
+  padding: 10px 16px !important;
   color: white;
-  transition: background-color 0.3s ease;
+  /* border-radius: 8px; */
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .sidebar-listitem:hover {
-  background-color: #5c7858;
+  background-color: rgba(255, 255, 255, 0.15);
+  transform: translateX(4px);
+}
+
+.sidebar-listitem.active {
+  background-color: rgba(255, 255, 255, 0.2);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+.sidebar-listitem.active::before {
+  content: '';
+  position: absolute;
+  left: -12px;
+  top: 50%;
+  transform: translateY(-50%);
+  height: 70%;
+  width: 4px;
+  background-color: #E76F51;
+  border-radius: 0 4px 4px 0;
+}
+
+.sidebar-listitem::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.2) 0%, rgba(255,255,255,0) 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.5s, opacity 0.3s;
+}
+
+.sidebar-listitem:active::after {
+  transform: scale(2);
+  opacity: 1;
+  transition: 0s;
 }
 
 /* Sidebar ListIcon */
 .sidebar-listicon {
   min-width: 40px !important;
-  color: #394736 !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  transition: transform 0.2s ease;
+}
+
+.sidebar-listitem:hover .sidebar-listicon {
+  transform: scale(1.1);
 }
 
 /* Sidebar Logout Section */
 .sidebar-logout {
   text-align: center;
   margin: 16px;
+  padding: 16px 0;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Logout Button */
 .logout-button {
-  background-color: #5c7858;
-  color: white;
+  background: linear-gradient(135deg, #E76F51 0%, #C5553D 100%) !important;
+  color: white !important;
   text-transform: none;
   border-radius: 8px;
-  width: 80%;
+  width: 85%;
   font-size: 14px;
-  transition: background-color 0.3s ease;
+  padding: 10px 0;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
 }
 
 .logout-button:hover {
-  background-color: #3d4e3a;
+  background: linear-gradient(135deg, #C5553D 0%, #B04B36 100%) !important;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+  transform: translateY(-2px);
+}
+
+.logout-button::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0) 70%);
+  transform: scale(0);
+  opacity: 0;
+  transition: transform 0.5s, opacity 0.3s;
+}
+
+.logout-button:active::after {
+  transform: scale(2);
+  opacity: 1;
+  transition: 0s;
 }
 
 /* Main Content */
 .main-content {
   flex-grow: 1;
-  /* padding: 24px; */
-  background-color: #EAEAEA;
+  background-color: #F8F9FA;
   overflow-y: auto;
+  transition: margin-left 0.3s ease;
 }
 
 /* Mobile AppBar */
 .appbar {
-  background-color: #7D9B76 !important;
+  background: linear-gradient(90deg, #2A9D8F 0%, #1E7168 100%) !important;
   z-index: 1201;
   height: 64px;
   display: flex;
   padding: 0 16px;
-  box-shadow: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1) !important;
 }
 
 /* Toolbar for AppBar */
@@ -112,14 +227,101 @@
 /* Menu Button */
 .menu-button {
   color: white;
-  margin-right: 20px; /* Creates space between the hamburger menu and the search bar */
+  margin-right: 20px;
+  transition: transform 0.2s ease;
+}
+
+.menu-button:hover {
+  transform: rotate(90deg);
 }
 
 /* Mobile SearchBar */
 .mobile-searchbar {
   flex-grow: 1;
-  background: transparent !important; /* Transparent background for the search bar */
-  border: none;
+  background: rgba(255, 255, 255, 0.1) !important;
+  border-radius: 8px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  .sidebar-paper {
+    width: 240px;
+  }
+  
+  .sidebar-logo {
+    height: 100px;
+  }
+  
+  .sidebar-listitem {
+    padding: 8px 12px !important;
+  }
+}
+
+/* Tablet adjustments */
+@media (min-width: 601px) and (max-width: 1024px) {
+  .sidebar-paper {
+    width: 250px;
+  }
+}
+
+/* Card styling */
+.card {
+  background-color: #FFFFFF;
+  border-radius: 12px;
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1);
+  transform: translateY(-2px);
+}
+
+/* Section headers */
+.section-header {
+  color: #2B2D42;
+  font-weight: 600;
+  margin-bottom: 16px;
+  position: relative;
+}
+
+.section-header::after {
+  content: '';
+  position: absolute;
+  bottom: -8px;
+  left: 0;
+  width: 40px;
+  height: 3px;
+  background-color: #2A9D8F;
+  border-radius: 2px;
+}
+
+/* Status indicators */
+.status-chip {
+  border-radius: 16px;
+  padding: 4px 12px;
+  font-size: 0.75rem;
+  font-weight: 500;
+}
+
+.status-success {
+  background-color: rgba(82, 183, 136, 0.15);
+  color: #2E7D32;
+}
+
+.status-warning {
+  background-color: rgba(248, 197, 55, 0.15);
+  color: #ED6C02;
+}
+
+.status-error {
+  background-color: rgba(230, 57, 70, 0.15);
+  color: #D32F2F;
+}
+
+.status-info {
+  background-color: rgba(69, 123, 157, 0.15);
+  color: #0288D1;
 }
 
 fieldset.MuiOutlinedInput-notchedOutline {

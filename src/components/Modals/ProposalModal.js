@@ -9,7 +9,7 @@ import {
 } from "@mui/material";
 import { DateTimePicker, LocalizationProvider } from "@mui/x-date-pickers";
 import { AdapterDateFns } from "@mui/x-date-pickers/AdapterDateFns";
-import { formatTimestamp } from "../utils/dateUtils";
+import { formatTimestamp } from "../../utils/dateUtils";
 
 export default function ProposalModal({ open, onClose, proposal, onSave }) {
   const [tempProposal, setTempProposal] = useState(proposal);

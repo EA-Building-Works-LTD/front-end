@@ -32,18 +32,18 @@ import CircleIcon from "@mui/icons-material/Circle";
 import MenuIcon from "@mui/icons-material/Menu";
 
 // Utilities & ephemeral state hook
-import { formatTimestamp, formatDayOfWeek } from "../utils/dateUtils";
-import { formatWithCommas } from "../utils/dateUtils";
+import { formatTimestamp, formatDayOfWeek } from "../../utils/dateUtils";
+import { formatWithCommas } from "../../utils/dateUtils";
 import { v4 as uuidv4 } from "uuid";
-import useLocalStorageState from "../hooks/useLocalStorageState";
+import useLocalStorageState from "../../hooks/useLocalStorageState";
 
 // Components (same functionality as desktop)
 import NotesSection from './NotesSection';
 import ProjectMediaTab from "./ProjectMediaTab";
-import StageModal from './StageModal';
-import AppointmentModal from './AppointmentModal';
-import ContractModal from './ContractModal';
-import ProposalModal from './ProposalModal';
+import StageModal from '../Modals/StageModal';
+import AppointmentModal from '../Appointments/AppointmentModal';
+import ContractModal from '../Modals/ContractModal';
+import ProposalModal from '../Modals/ProposalModal';
 
 // CSS
 import "./LeadDetailMobile.css";
@@ -322,7 +322,7 @@ export default function LeadDetailMobile() {
   const dealNumberString = `Lead # ${formatTimestamp(lead.timestamp)}`;
   const appointmentDay = leadObj.appointmentDate ? formatDayOfWeek(leadObj.appointmentDate) : "";
   const appointmentDateString = leadObj.appointmentDate ? formatTimestamp(leadObj.appointmentDate) : "";
-  const pipelineStages = ["New Lead", "In Progress", "Quote Sent", "Accepted", "Rejected", "Cancelled"];
+  const pipelineStages = ["New Lead", "In Progress", "Quote Sent", "Completed", "Cancelled", "No Answer"];
 
   // Determine the index of the current stage
   const currentStageIndex = pipelineStages.indexOf(leadObj.stage);
@@ -395,7 +395,7 @@ export default function LeadDetailMobile() {
             <MenuIcon fontSize="small" />
           </Box>
           <Box>
-            <Typography variant="caption" sx={{ color: "#999" }}>
+            <Typography variant="caption" sx={{ color: "#999" }}> 
               Active sequence
             </Typography>
             <Typography variant="body2" sx={{ fontWeight: 600 }}>

@@ -12,7 +12,7 @@ import {
 import MoreVertIcon from "@mui/icons-material/MoreVert";
 import { formatTimestamp } from "../utils/dateUtils";
 import useLocalStorageState from "../hooks/useLocalStorageState";
-import './LeadDetailDrawer.css';
+import './Leads/LeadDetailDrawer.css';
 
 export default function ProposalsPage({ onCreateProposal }) {
   const [allLeadData, setAllLeadData] = useLocalStorageState("myLeadData", {});

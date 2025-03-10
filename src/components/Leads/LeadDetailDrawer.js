@@ -31,14 +31,14 @@ import {
   formatTimestamp,
   formatDayOfWeek,
   formatWithCommas,
-} from "../utils/dateUtils";
+} from "../../utils/dateUtils";
 
 import { v4 as uuidv4 } from "uuid";
-import useLocalStorageState from "../hooks/useLocalStorageState";
-import ContractModal from './ContractModal';
-import AppointmentModal from './AppointmentModal';
-import StageModal from './StageModal';
-import ProposalModal from './ProposalModal';
+import useLocalStorageState from "../../hooks/useLocalStorageState";
+import ContractModal from '../Modals/ContractModal';
+import AppointmentModal from '../Appointments/AppointmentModal';
+import StageModal from '../Modals/StageModal';
+import ProposalModal from '../Modals/ProposalModal';
 import NotesSection from './NotesSection';
 import ProjectMediaTab from "./ProjectMediaTab";
 
