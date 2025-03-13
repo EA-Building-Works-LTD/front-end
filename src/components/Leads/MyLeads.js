@@ -22,6 +22,7 @@ import {
   FormControl,
   InputLabel,
   Chip,
+  FormHelperText,
 } from "@mui/material";
 import { 
   Search, 
@@ -35,6 +36,7 @@ import {
   HourglassEmpty,
   Send,
   SortByAlpha,
+  CalendarToday,
 } from "@mui/icons-material";
 import axios from "axios";
 import LeadDetailDrawer from "./LeadDetailDrawer";
@@ -71,6 +73,19 @@ const MyLeads = () => {
   ];
   const [selectedStage, setSelectedStage] = useState("All Customers");
 
+  // Date filter options
+  const dateFilterOptions = [
+    { value: "", label: "All Time" },
+    { value: "7days", label: "Last 7 Days" },
+    { value: "14days", label: "Last 14 Days" },
+    { value: "21days", label: "Last 21 Days" },
+    { value: "1month", label: "Last Month" },
+    { value: "3months", label: "Last 3 Months" },
+    { value: "6months", label: "Last 6 Months" },
+    { value: "1year", label: "Last Year" },
+    { value: "1yearplus", label: "Older than 1 Year" },
+  ];
+
   // Filters state for each field – using empty string to mean "All"
   const [filters, setFilters] = useState({
     customerName: "",
@@ -79,6 +94,7 @@ const MyLeads = () => {
     workRequired: "",
     details: "",
     budget: "",
+    dateAdded: "", // New date filter
   });
   // Applied filters state: when user clicks Apply Filters
   const [appliedFilters, setAppliedFilters] = useState({
@@ -88,6 +104,7 @@ const MyLeads = () => {
     workRequired: "",
     details: "",
     budget: "",
+    dateAdded: "", // New date filter
   });
 
   // State for filter drawer open/close
@@ -126,11 +143,45 @@ const MyLeads = () => {
     fetchLeads();
   }, []);
 
+  // Helper function to check if a lead is within the specified time range
+  const isLeadWithinTimeRange = (lead, days) => {
+    const leadDate = new Date(lead.timestamp);
+    const now = new Date();
+    const timeAgo = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
+    return leadDate >= timeAgo;
+  };
+
   // Merge each API lead with ephemeral state so that each lead gets a "stage" property.
-  const combinedLeads = leads.map((lead) => ({
-    ...lead,
-    stage: allLeadData[lead._id]?.stage || "New Lead",
-  }));
+  // Note: This array contains ALL leads regardless of stage or age.
+  // The filtering by stage happens later when the user clicks on a stage tab.
+  const combinedLeads = leads.map((lead) => {
+    // Check if lead is within the last 14 days
+    const isWithin14Days = isLeadWithinTimeRange(lead, 14);
+    
+    // Get the stored stage from local storage (if any)
+    const storedStage = allLeadData[lead._id]?.stage;
+    const stageManuallySet = allLeadData[lead._id]?.stageManuallySet;
+    
+    let stage;
+    
+    // If the lead has a manually set stage, respect that
+    if (stageManuallySet) {
+      stage = storedStage || "New Lead";
+    } 
+    // If it has a stored stage but not manually set, use that
+    else if (storedStage) {
+      stage = storedStage;
+    }
+    // Default for leads with no stored stage
+    else {
+      stage = "New Lead";
+    }
+    
+    return {
+      ...lead,
+      stage,
+    };
+  });
 
   // Helper: Get unique values for a given field from combinedLeads.
   const getUniqueValues = (field) => {
@@ -185,8 +236,54 @@ const MyLeads = () => {
         lead.budget?.toLowerCase() === appliedFilters.budget.toLowerCase()
     );
   }
+  
+  // Apply date filter
+  if (appliedFilters.dateAdded) {
+    const now = new Date();
+    let filterDate;
+    
+    switch (appliedFilters.dateAdded) {
+      case "7days":
+        filterDate = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+        filteredLeads = filteredLeads.filter(lead => new Date(lead.timestamp) >= filterDate);
+        break;
+      case "14days":
+        filterDate = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+        filteredLeads = filteredLeads.filter(lead => new Date(lead.timestamp) >= filterDate);
+        break;
+      case "21days":
+        filterDate = new Date(now.getTime() - 21 * 24 * 60 * 60 * 1000);
+        filteredLeads = filteredLeads.filter(lead => new Date(lead.timestamp) >= filterDate);
+        break;
+      case "1month":
+        filterDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        filteredLeads = filteredLeads.filter(lead => new Date(lead.timestamp) >= filterDate);
+        break;
+      case "3months":
+        filterDate = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        filteredLeads = filteredLeads.filter(lead => new Date(lead.timestamp) >= filterDate);
+        break;
+      case "6months":
+        filterDate = new Date(now.getFullYear(), now.getMonth() - 6, now.getDate());
+        filteredLeads = filteredLeads.filter(lead => new Date(lead.timestamp) >= filterDate);
+        break;
+      case "1year":
+        filterDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        filteredLeads = filteredLeads.filter(lead => new Date(lead.timestamp) >= filterDate);
+        break;
+      case "1yearplus":
+        filterDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+        filteredLeads = filteredLeads.filter(lead => new Date(lead.timestamp) < filterDate);
+        break;
+      default:
+        break;
+    }
+  }
 
   // Then filter by selected stage (unless "All Customers" is chosen).
+  // This is where we filter the leads based on the selected stage tab.
+  // "All Customers" shows all leads regardless of stage.
+  // Other tabs (like "New Lead") only show leads with that specific stage.
   const stageFilteredLeads =
     selectedStage === "All Customers"
       ? filteredLeads
@@ -269,6 +366,7 @@ const MyLeads = () => {
       workRequired: "",
       details: "",
       budget: "",
+      dateAdded: "", // Clear date filter too
     };
     setFilters(cleared);
     setAppliedFilters(cleared);
@@ -650,6 +748,29 @@ const MyLeads = () => {
         </div>
       </Box>
 
+      {/* Active Filter Heading */}
+      {appliedFilters.dateAdded && (
+        <Box className="active-filter-heading">
+          <CalendarToday fontSize="small" sx={{ color: '#2A9D8F', mr: 1 }} />
+          <Typography variant="h6">
+            {dateFilterOptions.find(option => option.value === appliedFilters.dateAdded)?.label || 'Filtered Leads'}
+            <span className="filter-count">{filteredLeads.length} lead{filteredLeads.length !== 1 ? 's' : ''}</span>
+          </Typography>
+          <Box sx={{ flexGrow: 1 }} />
+          <Button 
+            size="small" 
+            onClick={() => {
+              setFilters({...filters, dateAdded: ''});
+              setAppliedFilters({...appliedFilters, dateAdded: ''});
+            }}
+            startIcon={<Cancel fontSize="small" />}
+            className="clear-filter-button"
+          >
+            Clear Filter
+          </Button>
+        </Box>
+      )}
+
       {/* Render leads based on view mode */}
       {viewMode === "grouped" ? (
         renderGroupedView()
@@ -688,6 +809,31 @@ const MyLeads = () => {
           <Typography variant="h6" className="filter-title">
             Filters
           </Typography>
+
+          {/* Date Added Filter */}
+          <FormControl fullWidth margin="normal">
+            <InputLabel id="filter-date-label">Date Added</InputLabel>
+            <Select
+              labelId="filter-date-label"
+              value={filters.dateAdded}
+              label="Date Added"
+              onChange={(e) =>
+                setFilters({ ...filters, dateAdded: e.target.value })
+              }
+              startAdornment={
+                <CalendarToday fontSize="small" sx={{ mr: 1, color: '#2A9D8F' }} />
+              }
+            >
+              {dateFilterOptions.map((option) => (
+                <MenuItem key={option.value} value={option.value}>
+                  {option.label}
+                </MenuItem>
+              ))}
+            </Select>
+            <FormHelperText>
+              Filter leads by when they were added
+            </FormHelperText>
+          </FormControl>
 
           {/* City Filter */}
           <FormControl fullWidth margin="normal">

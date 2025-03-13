@@ -104,6 +104,13 @@ export default function LeadDetailMobile() {
   const [touchPosition, setTouchPosition] = useState(null);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
+  // Add these refs after the other state declarations
+  const activityTabRef = React.useRef(null);
+  const appointmentsTabRef = React.useRef(null);
+  const proposalsTabRef = React.useRef(null);
+  const notesTabRef = React.useRef(null);
+  const mediaTabRef = React.useRef(null);
+
   // Retrieve lead from router state
   const lead = location.state?.lead;
   const hasLead = Boolean(lead);
@@ -240,6 +247,9 @@ export default function LeadDetailMobile() {
             `Lead has been moved to the ${changes.stage} stage.`
           ),
         ];
+        
+        // Add stageManuallySet flag when stage is manually changed
+        changes.stageManuallySet = true;
       }
       if ("contractAmount" in changes && changes.contractAmount !== oldData.contractAmount) {
         updatedActivities = [
@@ -475,7 +485,87 @@ export default function LeadDetailMobile() {
 
   // Tab change
   const handleTabChange = (event, newValue) => {
+    // First set the active tab
     setActiveTab(newValue);
+    
+    // Use multiple approaches to ensure scrolling works on all devices
+    setTimeout(() => {
+      // Map of tab indices to element IDs
+      const tabIds = [
+        'activity-tab-content',
+        'appointments-tab-content',
+        'proposals-tab-content',
+        'notes-tab-content',
+        'media-tab-content'
+      ];
+      
+      const targetId = tabIds[newValue];
+      const targetElement = document.getElementById(targetId);
+      
+      if (targetElement) {
+        // Try to find the scroll indicator within the target element
+        const scrollIndicator = targetElement.querySelector('.scroll-indicator');
+        const elementToScroll = scrollIndicator || targetElement;
+        
+        // Get the header height to offset the scroll
+        const headerHeight = 120; // Increased height to ensure visibility
+        
+        // Approach 1: Use scrollIntoView with offset
+        try {
+          // First scroll to top to ensure consistent behavior
+          window.scrollTo(0, 0);
+          
+          // Then scroll to the element
+          const elementPosition = elementToScroll.getBoundingClientRect().top;
+          window.scrollTo({
+            top: elementPosition - headerHeight,
+            behavior: 'auto' // Use 'auto' instead of 'smooth' for more reliable behavior
+          });
+        } catch (error) {
+          console.error("Scroll approach 1 failed:", error);
+        }
+        
+        // Approach 2: Use scrollIntoView directly
+        setTimeout(() => {
+          try {
+            // Create a temporary style to adjust scroll margin
+            const style = document.createElement('style');
+            style.innerHTML = `
+              #${targetId} {
+                scroll-margin-top: ${headerHeight}px;
+              }
+            `;
+            document.head.appendChild(style);
+            
+            // Scroll to the element
+            elementToScroll.scrollIntoView({
+              block: 'start',
+              behavior: 'auto'
+            });
+            
+            // Remove the temporary style
+            setTimeout(() => {
+              document.head.removeChild(style);
+            }, 100);
+          } catch (error) {
+            console.error("Scroll approach 2 failed:", error);
+          }
+        }, 50);
+        
+        // Approach 3: Manual scroll calculation
+        setTimeout(() => {
+          try {
+            const rect = elementToScroll.getBoundingClientRect();
+            const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+            const targetPosition = rect.top + scrollTop - headerHeight;
+            
+            window.scrollTo(0, targetPosition);
+          } catch (error) {
+            console.error("Scroll approach 3 failed:", error);
+          }
+        }, 100);
+      }
+    }, 50);
   };
 
   // Media handling functions
@@ -1013,21 +1103,42 @@ export default function LeadDetailMobile() {
       {/* Bottom Navigation */}
       <BottomNavigation
         value={activeTab}
-          onChange={handleTabChange}
+        onChange={handleTabChange}
         className="bottom-navigation"
       >
-        <BottomNavigationAction label="Activity" icon={<HistoryIcon />} />
-        <BottomNavigationAction label="Appointments" icon={<CalendarMonthIcon />} />
-        <BottomNavigationAction label="Proposals" icon={<DescriptionIcon />} />
-        <BottomNavigationAction label="Notes" icon={<NoteIcon />} />
-        <BottomNavigationAction label="Media" icon={<ImageIcon />} />
+        <BottomNavigationAction 
+          label="Activity" 
+          icon={<HistoryIcon />} 
+          className="nav-item nav-activity"
+        />
+        <BottomNavigationAction 
+          label="Appointments" 
+          icon={<CalendarMonthIcon />} 
+          className="nav-item nav-appointments"
+        />
+        <BottomNavigationAction 
+          label="Proposals" 
+          icon={<DescriptionIcon />} 
+          className="nav-item nav-proposals"
+        />
+        <BottomNavigationAction 
+          label="Notes" 
+          icon={<NoteIcon />} 
+          className="nav-item nav-notes"
+        />
+        <BottomNavigationAction 
+          label="Media" 
+          icon={<ImageIcon />} 
+          className="nav-item nav-media"
+        />
       </BottomNavigation>
 
       {/* Tab Content */}
       <Box className="tab-content">
       {/* ACTIVITY TAB */}
         {activeTab === 0 && (
-          <Box>
+          <Box id="activity-tab-content" ref={activityTabRef}>
+            <Box className="scroll-indicator" sx={{ height: '10px', width: '100%', bgcolor: 'transparent' }}></Box>
             <Typography variant="h6" sx={{ mb: 2 }}>Recent Activity</Typography>
         {leadObj.activities && leadObj.activities.length > 0 ? (
           leadObj.activities
@@ -1063,7 +1174,8 @@ export default function LeadDetailMobile() {
 
       {/* APPOINTMENTS TAB */}
         {activeTab === 1 && (
-          <Box>
+          <Box id="appointments-tab-content" ref={appointmentsTabRef}>
+            <Box className="scroll-indicator" sx={{ height: '10px', width: '100%', bgcolor: 'transparent' }}></Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
               <Typography variant="h6">Appointments</Typography>
               <Button
@@ -1187,7 +1299,8 @@ export default function LeadDetailMobile() {
 
       {/* PROPOSALS TAB */}
         {activeTab === 2 && (
-          <Box>
+          <Box id="proposals-tab-content" ref={proposalsTabRef}>
+            <Box className="scroll-indicator" sx={{ height: '10px', width: '100%', bgcolor: 'transparent' }}></Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
               <Typography variant="h6">Proposals</Typography>
         <Button
@@ -1301,7 +1414,8 @@ export default function LeadDetailMobile() {
 
       {/* NOTES TAB */}
         {activeTab === 3 && (
-          <Box>
+          <Box id="notes-tab-content" ref={notesTabRef}>
+            <Box className="scroll-indicator" sx={{ height: '10px', width: '100%', bgcolor: 'transparent' }}></Box>
             <Typography variant="h6" sx={{ mb: 2 }}>Notes</Typography>
         <NotesSection leadObj={leadObj} leadId={lead._id} onAddNote={handleAddNote} />
           </Box>
@@ -1309,7 +1423,8 @@ export default function LeadDetailMobile() {
 
         {/* MEDIA TAB */}
         {activeTab === 4 && (
-          <Box className="tab-content">
+          <Box id="media-tab-content" ref={mediaTabRef}>
+            <Box className="scroll-indicator" sx={{ height: '10px', width: '100%', bgcolor: 'transparent' }}></Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
               <Typography variant="h6">Project Media</Typography>
               <Button 

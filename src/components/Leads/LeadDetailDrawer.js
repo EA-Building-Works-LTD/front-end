@@ -198,6 +198,9 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
       if ("stage" in changes) {
         const stageAct = getStageActivity(oldData.stage, changes.stage);
         if (stageAct) updatedActivities.push(stageAct);
+        
+        // Add stageManuallySet flag when stage is manually changed
+        changes.stageManuallySet = true;
       }
 
       // Contract changes

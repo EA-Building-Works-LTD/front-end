@@ -416,38 +416,80 @@
   z-index: 100;
   height: 96px !important;
   display: flex;
-  justify-content: space-around;
+  justify-content: space-between; /* Changed from space-around to space-between for better distribution */
   align-items: center;
+  padding: 0 4px; /* Add slight padding on the sides */
 }
 
+/* Common styles for all navigation items */
 .bottom-navigation .MuiBottomNavigationAction-root {
   padding: 16px 0;
-  min-width: 60px;
+  min-width: 20%; /* Set to percentage instead of fixed width to ensure equal distribution */
+  max-width: 20%; /* Ensure each item takes exactly 20% of the width (5 items) */
   min-height: 96px; /* Increased from 72px to 96px as requested */
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
+  overflow: hidden; /* Prevent content from overflowing */
+  margin: 0; /* Remove any margin */
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
 }
 
 /* Make the label always visible, not just on selection */
 .bottom-navigation .MuiBottomNavigationAction-label {
-  font-size: 0.7rem; /* Further reduced from 0.75rem to 0.7rem for better fit */
+  font-size: 0.65rem; /* Further reduced font size for better fit */
   margin-top: 4px; /* Reduced from 6px to 4px for tighter spacing */
   font-weight: 500;
   opacity: 1 !important; /* Force label to always be visible */
   transform: none !important; /* Prevent transform on selection */
   transition: color 0.2s ease !important; /* Only transition the color */
-  line-height: 1.2; /* Ensure consistent line height */
+  line-height: 1.1; /* Tighter line height */
   text-align: center; /* Center text */
   width: 100%; /* Full width to ensure alignment */
+  white-space: nowrap; /* Prevent text wrapping */
+  overflow: hidden; /* Hide overflow */
+  text-overflow: ellipsis; /* Add ellipsis for overflow text */
+  padding: 0 2px; /* Add slight padding */
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
+}
+
+/* Specific styles for each navigation item */
+.nav-activity .MuiBottomNavigationAction-label {
+  font-size: 0.65rem;
+}
+
+.nav-appointments .MuiBottomNavigationAction-label {
+  font-size: 0.58rem; /* Smallest font for the longest text */
+  letter-spacing: -0.3px; /* Tighter letter spacing */
+  transform: scale(0.95) !important; /* Slightly scale down the text */
+}
+
+.nav-proposals .MuiBottomNavigationAction-label {
+  font-size: 0.62rem;
+  letter-spacing: -0.2px;
+}
+
+.nav-notes .MuiBottomNavigationAction-label {
+  font-size: 0.65rem; /* Can be larger since it's a short word */
+}
+
+.nav-media .MuiBottomNavigationAction-label {
+  font-size: 0.65rem; /* Can be larger since it's a short word */
 }
 
 /* Override Material UI's default behavior of hiding labels */
 .bottom-navigation .MuiBottomNavigationAction-root:not(.Mui-selected) .MuiBottomNavigationAction-label {
-  font-size: 0.7rem !important; /* Match the selected size */
+  font-size: 0.65rem !important; /* Match the selected size */
   opacity: 0.8 !important; /* Slightly dimmer when not selected */
+}
+
+/* Special handling for the Appointments tab when not selected */
+.nav-appointments:not(.Mui-selected) .MuiBottomNavigationAction-label {
+  font-size: 0.58rem !important; /* Even smaller font for Appointments */
+  letter-spacing: -0.3px !important;
+  transform: scale(0.95) !important;
 }
 
 .bottom-navigation .MuiBottomNavigationAction-root.Mui-selected {
@@ -459,10 +501,10 @@
 }
 
 .bottom-navigation .MuiBottomNavigationAction-root .MuiSvgIcon-root {
-  font-size: 2rem; /* Standardized size for all icons */
+  font-size: 1.9rem; /* Slightly reduced icon size */
   margin-bottom: 0; /* Remove bottom margin and let the parent control spacing */
-  width: 2rem; /* Fixed width */
-  height: 2rem; /* Fixed height */
+  width: 1.9rem; /* Fixed width */
+  height: 1.9rem; /* Fixed height */
   display: block; /* Ensure block display */
 }
 
@@ -473,6 +515,8 @@
   align-items: center;
   justify-content: center;
   width: 100%;
+  padding: 0 2px; /* Add slight padding */
+  box-sizing: border-box; /* Ensure padding is included in width calculation */
 }
 
 /* Tab content - adjust padding to account for taller navigation */
