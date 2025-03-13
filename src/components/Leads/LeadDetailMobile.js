@@ -54,14 +54,13 @@ import InfoIcon from '@mui/icons-material/Info';
 import PoundSterlingIcon from '../Icons/PoundSterlingIcon';
 
 // Utilities & ephemeral state hook
-import { formatTimestamp, formatDayOfWeek } from "../../utils/dateUtils";
+import { formatTimestamp } from "../../utils/dateUtils";
 import { formatWithCommas } from "../../utils/dateUtils";
 import { v4 as uuidv4 } from "uuid";
 import useLocalStorageState from "../../hooks/useLocalStorageState";
 
 // Components (same functionality as desktop)
 import NotesSection from './NotesSection';
-import ProjectMediaTab from "./ProjectMediaTab";
 import StageModal from '../Modals/StageModal';
 import AppointmentModal from '../Appointments/AppointmentModal';
 import ContractModal from '../Modals/ContractModal';
@@ -97,7 +96,6 @@ export default function LeadDetailMobile() {
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [speedDialOpen, setSpeedDialOpen] = useState(false);
   const [mediaType, setMediaType] = useState("before"); // "before", "after", or "documents"
-  const [selectedFile, setSelectedFile] = useState(null);
   const fileInputRef = React.useRef(null);
   const [viewImageModal, setViewImageModal] = useState(false);
   const [selectedImage, setSelectedImage] = useState(null);
@@ -113,14 +111,14 @@ export default function LeadDetailMobile() {
   // Add debugging
   useEffect(() => {
     if (hasLead) {
-      console.log("Lead data from router state:", lead);
+      // console.log("Lead data from router state:", lead);
     }
   }, [hasLead, lead]);
 
   // Add debugging for leadObj
   useEffect(() => {
     if (hasLead && lead._id) {
-      console.log("Lead object from allLeadData:", allLeadData[lead._id]);
+      // console.log("Lead object from allLeadData:", allLeadData[lead._id]);
     }
   }, [hasLead, lead, allLeadData]);
 
@@ -135,9 +133,9 @@ export default function LeadDetailMobile() {
   useEffect(() => {
     if (hasLead && lead._id) {
       // Log the lead data and ID for debugging
-      console.log("Initializing lead data:", lead);
-      console.log("Lead ID:", lead._id);
-      console.log("allLeadData keys:", Object.keys(allLeadData));
+      // console.log("Initializing lead data:", lead);
+      // console.log("Lead ID:", lead._id);
+      // console.log("allLeadData keys:", Object.keys(allLeadData));
       
       // Check if we already have data for this lead
       if (!allLeadData[lead._id]) {
@@ -169,10 +167,10 @@ export default function LeadDetailMobile() {
         ],
       };
         
-        console.log("Creating new lead object:", initialLeadObj);
+        // console.log("Creating new lead object:", initialLeadObj);
       setAllLeadData((prev) => ({ ...prev, [lead._id]: initialLeadObj }));
       } else {
-        console.log("Lead already exists in allLeadData");
+        // console.log("Lead already exists in allLeadData");
       }
     }
   }, [hasLead, lead, allLeadData, setAllLeadData]);
@@ -229,7 +227,7 @@ export default function LeadDetailMobile() {
 
   // -------------------- UPDATE HELPERS (same as desktop) --------------------
   function updateLeadData(changes) {
-    console.log("Updating lead data with changes:", changes);
+    // console.log("Updating lead data with changes:", changes);
     setAllLeadData((prev) => {
       const oldData = prev[lead._id] || {};
       let updatedActivities = oldData.activities || [];
@@ -289,7 +287,7 @@ export default function LeadDetailMobile() {
         ...prev,
         [lead._id]: { ...oldData, ...changes, activities: updatedActivities },
       };
-      console.log("Updated lead data:", updatedData[lead._id]);
+      // console.log("Updated lead data:", updatedData[lead._id]);
       return updatedData;
     });
   }
@@ -678,7 +676,7 @@ export default function LeadDetailMobile() {
           [lead._id]: updatedLead
         }));
         
-        console.log(`Deleted media item at index ${index} from ${mediaType}`);
+        // console.log(`Deleted media item at index ${index} from ${mediaType}`);
       } else {
         console.warn("Media item not found at the specified index");
       }
@@ -690,12 +688,10 @@ export default function LeadDetailMobile() {
   // Function to handle document download
   const handleDocumentClick = (document) => {
     try {
-      console.log("Handling document click:", document.name, document.type);
-      
       // For PDF files on mobile, we might need to open in a new tab
       // as some mobile browsers don't handle PDF downloads well
       if (document.type === 'application/pdf' && /Mobi|Android/i.test(navigator.userAgent)) {
-        console.log("Opening PDF in new tab (mobile device detected)");
+        // console.log("Opening PDF in new tab (mobile device detected)");
         window.open(document.url, '_blank');
         return;
       }
@@ -710,7 +706,7 @@ export default function LeadDetailMobile() {
       
       // For iOS Safari which doesn't support the download attribute well
       if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
-        console.log("iOS device detected, using special handling");
+        // console.log("iOS device detected, using special handling");
         // For iOS, we'll try to open the document in a new tab
         // The user can then use the browser's "Share" button to download
         window.open(document.url, '_blank');
@@ -718,7 +714,7 @@ export default function LeadDetailMobile() {
       }
       
       // For other browsers, proceed with download
-      console.log(`Downloading document: ${fileName}`);
+      // console.log(`Downloading document: ${fileName}`);
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -752,8 +748,42 @@ export default function LeadDetailMobile() {
   // -------------------- Derived Values --------------------
   const displayedName = leadObj.customerName || lead.fullName || "";
   const displayedAmount = leadObj.contractAmount || lead.contractAmount || "0";
-  const appointmentDay = leadObj.appointmentDate || lead.appointmentDate ? formatDayOfWeek(leadObj.appointmentDate || lead.appointmentDate) : "";
-  const appointmentDateString = leadObj.appointmentDate || lead.appointmentDate ? formatTimestamp(leadObj.appointmentDate || lead.appointmentDate) : "";
+  // const appointmentDay = leadObj.appointmentDate || lead.appointmentDate ? formatDayOfWeek(leadObj.appointmentDate || lead.appointmentDate) : "";
+  // const appointmentDateString = leadObj.appointmentDate || lead.appointmentDate ? formatTimestamp(leadObj.appointmentDate || lead.appointmentDate) : "";
+  
+  // Format appointment date in a more readable format
+  const formatFullAppointmentDate = (timestamp) => {
+    if (!timestamp) return "";
+    
+    const date = new Date(timestamp);
+    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+    
+    const dayName = days[date.getDay()];
+    const day = date.getDate();
+    const month = months[date.getMonth()];
+    const year = date.getFullYear();
+    
+    // Add ordinal suffix to day
+    let dayStr = day.toString();
+    if (day > 3 && day < 21) dayStr += 'th';
+    else if (day % 10 === 1) dayStr += 'st';
+    else if (day % 10 === 2) dayStr += 'nd';
+    else if (day % 10 === 3) dayStr += 'rd';
+    else dayStr += 'th';
+    
+    // Format time
+    let hours = date.getHours();
+    const minutes = date.getMinutes();
+    const ampm = hours >= 12 ? 'pm' : 'am';
+    hours = hours % 12;
+    hours = hours ? hours : 12; // the hour '0' should be '12'
+    const minutesStr = minutes < 10 ? `0${minutes}` : minutes;
+    
+    return `${dayName} ${dayStr} ${month} ${year} @ ${hours}:${minutesStr}${ampm}`;
+  };
+  
+  const fullAppointmentDate = formatFullAppointmentDate(leadObj.appointmentDate || lead.appointmentDate);
   const pipelineStages = ["New Lead", "In Progress", "Quote Sent", "Completed", "Cancelled", "No Answer"];
 
   // Determine the index of the current stage
@@ -967,13 +997,13 @@ export default function LeadDetailMobile() {
                     <Typography className="breakdown-label">10% Fee (to Ehsaan):</Typography>
                     <Typography className="breakdown-value">
                       £{leadObj.profit || lead.profit ? formatWithCommas((Number((leadObj.profit || lead.profit).replace(/,/g, '')) * 0.1).toFixed(2)) : "0"}
-          </Typography>
-        </Box>
+                    </Typography>
+                  </Box>
                 </Box>
                 <Typography className="amount-vat-note">
                   <InfoIcon fontSize="small" style={{ marginRight: '4px', fontSize: '16px' }} />
                   This is the amount payable to Ehsaan.
-        </Typography>
+                </Typography>
               </>
             )}
           </Box>
@@ -1036,62 +1066,122 @@ export default function LeadDetailMobile() {
           <Box>
             <Box sx={{ display: "flex", justifyContent: "space-between", alignItems: "center", mb: 2 }}>
               <Typography variant="h6">Appointments</Typography>
-          <Button
+              <Button
                 variant="contained" 
                 startIcon={<AddIcon />}
-            onClick={handleOpenDateModal}
-          >
+                onClick={handleOpenDateModal}
+                sx={{ 
+                  bgcolor: '#2A9D8F', 
+                  borderRadius: '8px',
+                  '&:hover': { bgcolor: '#238379' }
+                }}
+              >
                 Add
-          </Button>
-        </Box>
+              </Button>
+            </Box>
             
             {!(leadObj.appointmentDate || lead.appointmentDate) ? (
-          <Typography sx={{ color: "#999" }}>
-                No appointments scheduled. Click the Add button to schedule one.
-          </Typography>
-        ) : (
-              <Box className="appointment-card">
-                <Box className="appointment-header">
-            <Box>
-                    <Typography className="appointment-date">{appointmentDay}</Typography>
-                    <Typography className="appointment-time">{appointmentDateString}</Typography>
-            </Box>
-            <IconButton onClick={(e) => setAnchorElAppt(e.currentTarget)}>
-                    <MoreVertIcon />
-            </IconButton>
-                </Box>
-                <Box className="appointment-details">
-                  <CircleIcon sx={{ fontSize: 10, color: theme.palette.primary.main }} />
-                  <Typography>On-Site Estimate with <strong>{displayedName}</strong></Typography>
-                </Box>
-                <Typography className="appointment-location">
-                  {lead.address || leadObj.address || "No address set"}
+              <Box className="appointment-empty">
+                <CalendarMonthIcon className="appointment-empty-icon" />
+                <Typography variant="body1" className="appointment-empty-text">
+                  No appointments scheduled yet
                 </Typography>
-          </Box>
-        )}
+                <Button 
+                  variant="outlined" 
+                  startIcon={<AddIcon />} 
+                  onClick={handleOpenDateModal}
+                >
+                  Schedule Appointment
+                </Button>
+              </Box>
+            ) : (
+              <Box className="appointment-card-simple">
+                <Box className="appointment-header">
+                  <Box className="appointment-title-container">
+                    <Typography className="appointment-type">
+                      On-Site Estimate
+                    </Typography>
+                  </Box>
+                  <IconButton 
+                    onClick={(e) => setAnchorElAppt(e.currentTarget)}
+                    sx={{ color: 'white' }}
+                  >
+                    <MoreVertIcon />
+                  </IconButton>
+                </Box>
+                
+                <Box className="appointment-content">
+                  <Box className="appointment-with">
+                    <PersonIcon className="appointment-with-icon" />
+                    <Typography>
+                      Meeting with <strong>{displayedName}</strong>
+                    </Typography>
+                  </Box>
+                  
+                  <Box className="appointment-datetime">
+                    <CalendarTodayIcon className="appointment-datetime-icon" />
+                    <Typography>
+                      {fullAppointmentDate}
+                    </Typography>
+                  </Box>
+                  
+                  <Box className="appointment-location">
+                    <LocationOnIcon className="appointment-location-icon" />
+                    <Typography>
+                      {lead.address || leadObj.address || "No address set"}
+                    </Typography>
+                  </Box>
+                </Box>
+                
+                <Box className="appointment-actions">
+                  <Button 
+                    className="appointment-action-button edit"
+                    variant="outlined"
+                    startIcon={<EditIcon />}
+                    onClick={() => {
+                      setOpenDateModal(true);
+                    }}
+                    sx={{ mr: 1 }}
+                  >
+                    Edit
+                  </Button>
+                  <Button 
+                    className="appointment-action-button delete"
+                    variant="outlined"
+                    color="error"
+                    startIcon={<DeleteIcon />}
+                    onClick={() => {
+                      setOpenDeleteDialog(true);
+                    }}
+                  >
+                    Delete
+                  </Button>
+                </Box>
+              </Box>
+            )}
             
-        <Menu
-          anchorEl={anchorElAppt}
-          open={Boolean(anchorElAppt)}
-          onClose={() => setAnchorElAppt(null)}
-        >
-          <MenuItem
-            onClick={() => {
-              setAnchorElAppt(null);
-              setOpenDateModal(true);
-            }}
-          >
-            Update Appointment
-          </MenuItem>
-          <MenuItem
-            onClick={() => {
-              setAnchorElAppt(null);
-              setOpenDeleteDialog(true);
-            }}
-          >
-            Delete Appointment
-          </MenuItem>
-        </Menu>
+            <Menu
+              anchorEl={anchorElAppt}
+              open={Boolean(anchorElAppt)}
+              onClose={() => setAnchorElAppt(null)}
+            >
+              <MenuItem
+                onClick={() => {
+                  setAnchorElAppt(null);
+                  setOpenDateModal(true);
+                }}
+              >
+                Update Appointment
+              </MenuItem>
+              <MenuItem
+                onClick={() => {
+                  setAnchorElAppt(null);
+                  setOpenDeleteDialog(true);
+                }}
+              >
+                Delete Appointment
+              </MenuItem>
+            </Menu>
           </Box>
         )}
 
@@ -1122,7 +1212,7 @@ export default function LeadDetailMobile() {
                     : proposal.status === "Pending" 
                       ? "Pending" 
                 : "—";
-              const isPending = proposal.status === "Pending";
+              // const isPending = proposal.status === "Pending";
                   
               return (
                     <Box key={proposal.id} className="proposal-card">

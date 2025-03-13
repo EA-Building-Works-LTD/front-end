@@ -1,14 +1,50 @@
 // src/pages/AppointmentsPage.js
 
 import React from "react";
-import { Box, Typography, Chip, Divider } from "@mui/material";
-import ChevronRightIcon from "@mui/icons-material/ChevronRight";
+import { 
+  Box, 
+  Typography, 
+  Chip, 
+  Divider, 
+  IconButton,
+} from "@mui/material";
+import PersonIcon from "@mui/icons-material/Person";
+import LocationOnIcon from "@mui/icons-material/LocationOn";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import EventIcon from "@mui/icons-material/Event";
 import TodayIcon from "@mui/icons-material/Today";
+import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useNavigate } from "react-router-dom";
 import useLocalStorageState from '../../hooks/useLocalStorageState';
-import { formatDayOfWeek, formatTimestamp } from '../../utils/dateUtils';
 import "./AppointmentsPage.css";
+
+// Helper function to format the full appointment date
+function formatFullAppointmentDate(timestamp) {
+  if (!timestamp) return "No date set";
+  
+  const date = new Date(timestamp);
+  const dayName = date.toLocaleDateString('en-US', { weekday: 'long' });
+  const day = date.getDate();
+  const month = date.toLocaleDateString('en-US', { month: 'long' });
+  const year = date.getFullYear();
+  
+  let hours = date.getHours();
+  const minutes = date.getMinutes();
+  const ampm = hours >= 12 ? 'pm' : 'am';
+  
+  hours = hours % 12;
+  hours = hours ? hours : 12; // the hour '0' should be '12'
+  const minutesStr = minutes < 10 ? '0' + minutes : minutes;
+  
+  // Add ordinal suffix to day
+  const dayStr = day + (
+    day === 1 || day === 21 || day === 31 ? 'st' : 
+    day === 2 || day === 22 ? 'nd' : 
+    day === 3 || day === 23 ? 'rd' : 'th'
+  );
+  
+  return `${dayName} ${dayStr} ${month} ${year} @ ${hours}:${minutesStr}${ampm}`;
+}
 
 /**
  * Gather all appointments from local storage.
@@ -99,12 +135,6 @@ export default function AppointmentsPage() {
     // Get the complete lead data from myLeadData
     const completeLeadData = myLeadData[appointment.leadId] || {};
     
-    // Log the appointment and lead ID for debugging
-    console.log("Appointment clicked:", appointment);
-    console.log("Lead ID:", appointment.leadId);
-    console.log("myLeadData keys:", Object.keys(myLeadData));
-    console.log("Complete lead data from storage:", completeLeadData);
-    
     // Create a properly structured lead object for navigation
     // We need to include ALL fields that the LeadDetailMobile component expects
     const leadForNavigation = {
@@ -124,9 +154,6 @@ export default function AppointmentsPage() {
       details: completeLeadData.details || appointment.details || ""
     };
     
-    // Log the lead data for navigation
-    console.log("Lead data for navigation:", leadForNavigation);
-    
     // Create a URL-friendly slug from the customer name (same as in MyLeads.js)
     const slugify = (text) => {
       return (
@@ -145,6 +172,16 @@ export default function AppointmentsPage() {
     // Navigate to the lead detail page with the lead data
     navigate(`/my-leads/${slug}`, { state: { lead: leadForNavigation } });
   };
+  
+  // Render empty state when no appointments
+  const renderEmptyState = () => (
+    <Box className="appointment-empty">
+      <CalendarTodayIcon className="appointment-empty-icon" />
+      <Typography variant="body1" className="appointment-empty-text">
+        No appointments scheduled yet
+      </Typography>
+    </Box>
+  );
   
   return (
     <div className="appointments-container">
@@ -188,38 +225,51 @@ export default function AppointmentsPage() {
           </Typography>
           
           {todayAppointments.map((apt, index) => (
-            <div 
+            <Box 
               key={`today-${index}`}
-              className="appointment-card today-card"
+              className="appointment-card-simple today-card"
               onClick={() => handleAppointmentClick(apt)}
             >
-              <div className="appointment-left">
-                <Typography className="appointment-day">
-                  {formatDayOfWeek(apt.appointmentDate)}
-                </Typography>
-                <Typography className="appointment-date-h1">
-                  {formatTimestamp(apt.appointmentDate)}
-                </Typography>
-              </div>
-              
-              <div className="appointment-center">
-                <div className="appointment-title-row">
-                  <Typography className="appointment-title">
-                    On-Site Estimate with <strong>{apt.customerName}</strong>
+              <Box className="appointment-header">
+                <Box className="appointment-title-container">
+                  <Typography className="appointment-type">
+                    On-Site Estimate
                   </Typography>
-                </div>
-                <Typography className="appointment-location">
-                  {apt.address || "No address set"}
-                </Typography>
-                <Typography className="appointment-person">
-                  {apt.builderName || "No builder assigned"}
-                </Typography>
-              </div>
-              
-              <Box className="appointment-right">
-                <ChevronRightIcon color="action" />
+                </Box>
+                <IconButton 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    handleAppointmentClick(apt);
+                  }}
+                  sx={{ color: 'white' }}
+                >
+                  <ChevronRightIcon />
+                </IconButton>
               </Box>
-            </div>
+              
+              <Box className="appointment-content">
+                <Box className="appointment-with">
+                  <PersonIcon className="appointment-with-icon" />
+                  <Typography>
+                    Meeting with <strong>{apt.customerName || "Unknown"}</strong>
+                  </Typography>
+                </Box>
+                
+                <Box className="appointment-datetime">
+                  <CalendarTodayIcon className="appointment-datetime-icon" />
+                  <Typography>
+                    {formatFullAppointmentDate(apt.appointmentDate)}
+                  </Typography>
+                </Box>
+                
+                <Box className="appointment-location">
+                  <LocationOnIcon className="appointment-location-icon" />
+                  <Typography>
+                    {apt.address || "No address set"}
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
           ))}
         </div>
       )}
@@ -248,44 +298,55 @@ export default function AppointmentsPage() {
           {appointments
             .filter(apt => !isToday(apt.appointmentDate))
             .map((apt, index) => (
-              <div 
+              <Box 
                 key={index}
-                className="appointment-card"
+                className="appointment-card-simple"
                 onClick={() => handleAppointmentClick(apt)}
               >
-                <div className="appointment-left">
-                  <Typography className="appointment-day">
-                    {formatDayOfWeek(apt.appointmentDate)}
-                  </Typography>
-                  <Typography className="appointment-date-h1">
-                    {formatTimestamp(apt.appointmentDate)}
-                  </Typography>
-                </div>
-                
-                <div className="appointment-center">
-                  <div className="appointment-title-row">
-                    <Typography className="appointment-title">
-                      On-Site Estimate with <strong>{apt.customerName}</strong>
+                <Box className="appointment-header">
+                  <Box className="appointment-title-container">
+                    <Typography className="appointment-type">
+                      On-Site Estimate
                     </Typography>
-                  </div>
-                  <Typography className="appointment-location">
-                    {apt.address || "No address set"}
-                  </Typography>
-                  <Typography className="appointment-person">
-                    {apt.builderName || "No builder assigned"}
-                  </Typography>
-                </div>
-                
-                <Box className="appointment-right">
-                  <ChevronRightIcon color="action" />
+                  </Box>
+                  <IconButton 
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleAppointmentClick(apt);
+                    }}
+                    sx={{ color: 'white' }}
+                  >
+                    <ChevronRightIcon />
+                  </IconButton>
                 </Box>
-              </div>
+                
+                <Box className="appointment-content">
+                  <Box className="appointment-with">
+                    <PersonIcon className="appointment-with-icon" />
+                    <Typography>
+                      Meeting with <strong>{apt.customerName || "Unknown"}</strong>
+                    </Typography>
+                  </Box>
+                  
+                  <Box className="appointment-datetime">
+                    <CalendarTodayIcon className="appointment-datetime-icon" />
+                    <Typography>
+                      {formatFullAppointmentDate(apt.appointmentDate)}
+                    </Typography>
+                  </Box>
+                  
+                  <Box className="appointment-location">
+                    <LocationOnIcon className="appointment-location-icon" />
+                    <Typography>
+                      {apt.address || "No address set"}
+                    </Typography>
+                  </Box>
+                </Box>
+              </Box>
             ))}
         </>
       ) : (
-        <Typography variant="body1" style={{ textAlign: 'center', marginTop: '32px', color: '#666' }}>
-          No appointments scheduled yet.
-        </Typography>
+        renderEmptyState()
       )}
     </div>
   );

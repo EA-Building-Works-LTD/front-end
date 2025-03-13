@@ -21,8 +21,21 @@ import {
   MenuItem,
   FormControl,
   InputLabel,
+  Chip,
 } from "@mui/material";
-import { Search, FilterList, ArrowBack, ArrowForward } from "@mui/icons-material";
+import { 
+  Search, 
+  FilterList, 
+  ArrowBack, 
+  ArrowForward, 
+  FolderOpen,
+  Assignment,
+  CheckCircle,
+  Cancel,
+  HourglassEmpty,
+  Send,
+  SortByAlpha,
+} from "@mui/icons-material";
 import axios from "axios";
 import LeadDetailDrawer from "./LeadDetailDrawer";
 import { useNavigate } from "react-router-dom";
@@ -80,6 +93,9 @@ const MyLeads = () => {
   // State for filter drawer open/close
   const [filterOpen, setFilterOpen] = useState(false);
 
+  // State for view mode (grouped or list)
+  const [viewMode, setViewMode] = useState("list");
+
   const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
 
@@ -121,7 +137,6 @@ const MyLeads = () => {
     const values = combinedLeads.map((lead) => lead[field]).filter((v) => !!v);
     return Array.from(new Set(values));
   };
-
 
   const cityOptions = getUniqueValues("city");
   const budgetOptions = getUniqueValues("budget");
@@ -177,6 +192,15 @@ const MyLeads = () => {
       ? filteredLeads
       : filteredLeads.filter((lead) => lead.stage === selectedStage);
 
+  // Group leads by stage for the grouped view
+  const groupedLeads = stageTabs.slice(1).reduce((acc, stage) => {
+    const leadsInStage = filteredLeads.filter(lead => lead.stage === stage);
+    if (leadsInStage.length > 0) {
+      acc[stage] = leadsInStage;
+    }
+    return acc;
+  }, {});
+
   // Pagination calculations.
   const totalLeads = stageFilteredLeads.length;
   const totalPages = Math.ceil(totalLeads / itemsPerPage);
@@ -187,7 +211,7 @@ const MyLeads = () => {
   // Reset pagination when filters change.
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedStage, searchTerm, appliedFilters]);
+  }, [selectedStage, searchTerm, appliedFilters, viewMode]);
 
   // Pagination handlers.
   const handlePrev = () => {
@@ -251,6 +275,68 @@ const MyLeads = () => {
     setFilterOpen(false);
   };
 
+  // Helper: Get stage icon based on stage name
+  const getStageIcon = (stage) => {
+    switch (stage) {
+      case "New Lead":
+        return <FolderOpen fontSize="small" sx={{ color: "#4DB6AC" }} />;
+      case "In Progress":
+        return <HourglassEmpty fontSize="small" sx={{ color: "#F4A261" }} />;
+      case "Quote Sent":
+        return <Send fontSize="small" sx={{ color: "#457B9D" }} />;
+      case "Completed":
+        return <CheckCircle fontSize="small" sx={{ color: "#52B788" }} />;
+      case "Rejected":
+        return <Cancel fontSize="small" sx={{ color: "#E63946" }} />;
+      case "Cancelled":
+        return <Cancel fontSize="small" sx={{ color: "#E63946" }} />;
+      default:
+        return <Assignment fontSize="small" />;
+    }
+  };
+
+  // Helper: Get stage class name for styling
+  const getStageClass = (stage) => {
+    const stageKey = stage.toLowerCase().replace(/\s+/g, '-');
+    switch (stageKey) {
+      case 'new-lead':
+        return 'stage-new-lead';
+      case 'in-progress':
+        return 'stage-in-progress';
+      case 'quote-sent':
+        return 'stage-quote-sent';
+      case 'completed':
+        return 'stage-completed';
+      case 'rejected':
+      case 'cancelled':
+      case 'no-answer':
+        return `stage-${stageKey}`;
+      default:
+        return '';
+    }
+  };
+
+  // Helper: Get stage indicator class
+  const getStageIndicatorClass = (stage) => {
+    const stageKey = stage.toLowerCase().replace(/\s+/g, '-');
+    switch (stageKey) {
+      case 'new-lead':
+        return 'stage-new';
+      case 'in-progress':
+        return 'stage-progress';
+      case 'quote-sent':
+        return 'stage-quote';
+      case 'completed':
+        return 'stage-completed';
+      case 'rejected':
+      case 'cancelled':
+      case 'no-answer':
+        return 'stage-rejected';
+      default:
+        return '';
+    }
+  };
+
   // Render desktop table view.
   const renderDesktopTable = () => (
     <TableContainer component={Paper} className="leads-table-container">
@@ -263,6 +349,7 @@ const MyLeads = () => {
             <TableCell className="table-header">Work Required</TableCell>
             <TableCell className="table-header">Details</TableCell>
             <TableCell className="table-header">Budget</TableCell>
+            <TableCell className="table-header">Stage</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -275,7 +362,7 @@ const MyLeads = () => {
             >
               <TableCell>
                 <Box className="client-cell">
-                  <Avatar sx={{ bgcolor: "#7D9B76" }} className="lead-avatar">
+                  <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
                     {lead.fullName?.[0] || "N"}
                   </Avatar>
                   <Box>
@@ -293,6 +380,29 @@ const MyLeads = () => {
               <TableCell>{lead.workRequired || "N/A"}</TableCell>
               <TableCell>{lead.details || "N/A"}</TableCell>
               <TableCell>{lead.budget || "N/A"}</TableCell>
+              <TableCell>
+                <Chip 
+                  icon={getStageIcon(lead.stage)}
+                  label={lead.stage} 
+                  size="small"
+                  sx={{ 
+                    backgroundColor: lead.stage === "New Lead" ? "#E8F5E9" :
+                                    lead.stage === "In Progress" ? "#FFF3E0" :
+                                    lead.stage === "Quote Sent" ? "#E1F5FE" :
+                                    lead.stage === "Completed" ? "#E8F5E9" :
+                                    "#FFEBEE",
+                    color: lead.stage === "New Lead" ? "#2E7D32" :
+                           lead.stage === "In Progress" ? "#E65100" :
+                           lead.stage === "Quote Sent" ? "#0277BD" :
+                           lead.stage === "Completed" ? "#2E7D32" :
+                           "#C62828",
+                    fontWeight: 500,
+                    '& .MuiChip-icon': {
+                      color: 'inherit'
+                    }
+                  }}
+                />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -304,9 +414,13 @@ const MyLeads = () => {
   const renderMobileCards = () => (
     <Box className="mobile-cards-container">
       {currentLeads.map((lead, i) => (
-        <Box key={i} className="mobile-lead-card" onClick={() => handleRowClick(lead)}>
+        <Box 
+          key={i} 
+          className={`mobile-lead-card ${getStageClass(lead.stage)}`} 
+          onClick={() => handleRowClick(lead)}
+        >
           <Box className="card-header">
-            <Avatar sx={{ bgcolor: "#7D9B76" }} className="lead-avatar">
+            <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
               {lead.fullName?.[0] || "N"}
             </Avatar>
             <Box>
@@ -329,15 +443,127 @@ const MyLeads = () => {
               <strong>Work Required:</strong> {lead.workRequired || "N/A"}
             </Typography>
             <Typography variant="body2">
-              <strong>Details:</strong> {lead.details || "N/A"}
-            </Typography>
-            <Typography variant="body2">
               <strong>Budget:</strong> {lead.budget || "N/A"}
             </Typography>
+            <div className={`card-stage-badge ${getStageClass(lead.stage)}`}>
+              {getStageIcon(lead.stage)}
+              <span style={{ marginLeft: '4px' }}>{lead.stage}</span>
+            </div>
           </Box>
         </Box>
       ))}
     </Box>
+  );
+
+  // Render grouped view (desktop and mobile)
+  const renderGroupedView = () => (
+    <>
+      {Object.keys(groupedLeads).length === 0 ? (
+        <Box className="empty-state">
+          <FolderOpen className="empty-state-icon" />
+          <Typography className="empty-state-title">No leads found</Typography>
+          <Typography className="empty-state-text">
+            There are no leads matching your current filters. Try adjusting your search criteria.
+          </Typography>
+        </Box>
+      ) : (
+        Object.entries(groupedLeads).map(([stage, stageLeads]) => (
+          <Box key={stage}>
+            <Box className="stage-group-header">
+              <span className={`stage-indicator ${getStageIndicatorClass(stage)}`}></span>
+              {stage}
+              <span className="stage-group-count">{stageLeads.length}</span>
+            </Box>
+            
+            {isMobile ? (
+              <Box className="mobile-cards-container">
+                {stageLeads.map((lead, i) => (
+                  <Box 
+                    key={i} 
+                    className={`mobile-lead-card ${getStageClass(lead.stage)}`} 
+                    onClick={() => handleRowClick(lead)}
+                  >
+                    <Box className="card-header">
+                      <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
+                        {lead.fullName?.[0] || "N"}
+                      </Avatar>
+                      <Box>
+                        <Typography className="client-name">
+                          {lead.fullName || "Unknown Name"}
+                        </Typography>
+                        <Typography className="client-subtext">
+                          {lead.phoneNumber}
+                        </Typography>
+                      </Box>
+                    </Box>
+                    <Box className="card-content">
+                      <Typography variant="body2">
+                        <strong>Address:</strong> {lead.address || "N/A"}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>City:</strong> {lead.city || "N/A"}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Work Required:</strong> {lead.workRequired || "N/A"}
+                      </Typography>
+                      <Typography variant="body2">
+                        <strong>Budget:</strong> {lead.budget || "N/A"}
+                      </Typography>
+                    </Box>
+                  </Box>
+                ))}
+              </Box>
+            ) : (
+              <TableContainer component={Paper} className="leads-table-container">
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell className="table-header">Customer Name</TableCell>
+                      <TableCell className="table-header">Address</TableCell>
+                      <TableCell className="table-header">City</TableCell>
+                      <TableCell className="table-header">Work Required</TableCell>
+                      <TableCell className="table-header">Details</TableCell>
+                      <TableCell className="table-header">Budget</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {stageLeads.map((lead, i) => (
+                      <TableRow
+                        key={i}
+                        onClick={() => handleRowClick(lead)}
+                        hover
+                        style={{ cursor: "pointer" }}
+                      >
+                        <TableCell>
+                          <Box className="client-cell">
+                            <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
+                              {lead.fullName?.[0] || "N"}
+                            </Avatar>
+                            <Box>
+                              <Typography className="client-name">
+                                {lead.fullName || "Unknown Name"}
+                              </Typography>
+                              <Typography className="client-subtext">
+                                {lead.phoneNumber}
+                              </Typography>
+                            </Box>
+                          </Box>
+                        </TableCell>
+                        <TableCell>{lead.address || "N/A"}</TableCell>
+                        <TableCell>{lead.city || "N/A"}</TableCell>
+                        <TableCell>{lead.workRequired || "N/A"}</TableCell>
+                        <TableCell>{lead.details || "N/A"}</TableCell>
+                        <TableCell>{lead.budget || "N/A"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            )}
+          </Box>
+        ))
+      )}
+    </>
   );
 
   if (loading) {
@@ -380,6 +606,9 @@ const MyLeads = () => {
             onClick={() => handleStageTabClick(stage)}
             style={{ flexShrink: 0 }}
           >
+            {stage !== "All Customers" && (
+              <span className={`stage-indicator ${getStageIndicatorClass(stage)}`}></span>
+            )}
             {stage}{" "}
             <span>
               {stage === "All Customers"
@@ -404,27 +633,44 @@ const MyLeads = () => {
           className="search-field"
         />
         <div className="action-buttons">
-          <Button variant="outlined" startIcon={<FilterList />} onClick={() => setFilterOpen(true)}>
+          <Button 
+            variant="outlined" 
+            startIcon={<SortByAlpha />} 
+            onClick={() => setViewMode(viewMode === "list" ? "grouped" : "list")}
+          >
+            {viewMode === "list" ? "Group by Stage" : "List View"}
+          </Button>
+          <Button 
+            variant="outlined" 
+            startIcon={<FilterList />} 
+            onClick={() => setFilterOpen(true)}
+          >
             Filters
           </Button>
         </div>
       </Box>
 
-      {/* Render leads: Table on desktop, Cards on mobile */}
-      {isMobile ? renderMobileCards() : renderDesktopTable()}
+      {/* Render leads based on view mode */}
+      {viewMode === "grouped" ? (
+        renderGroupedView()
+      ) : (
+        isMobile ? renderMobileCards() : renderDesktopTable()
+      )}
 
-      {/* Pagination Controls */}
-      <Box className="pagination-controls">
-        <IconButton onClick={handlePrev} disabled={currentPage === 1} className="pagination-arrow">
-          <ArrowBack />
-        </IconButton>
-        <Typography className="pagination-info">
-          Page {currentPage} of {totalPages || 1}
-        </Typography>
-        <IconButton onClick={handleNext} disabled={currentPage === totalPages || totalPages === 0} className="pagination-arrow">
-          <ArrowForward />
-        </IconButton>
-      </Box>
+      {/* Pagination Controls - only show in list view */}
+      {viewMode === "list" && (
+        <Box className="pagination-controls">
+          <IconButton onClick={handlePrev} disabled={currentPage === 1} className="pagination-arrow">
+            <ArrowBack />
+          </IconButton>
+          <Typography className="pagination-info">
+            Page {currentPage} of {totalPages || 1}
+          </Typography>
+          <IconButton onClick={handleNext} disabled={currentPage === totalPages || totalPages === 0} className="pagination-arrow">
+            <ArrowForward />
+          </IconButton>
+        </Box>
+      )}
 
       {/* For desktop, show the detail drawer */}
       {!isMobile && (
@@ -489,7 +735,7 @@ const MyLeads = () => {
 
           {/* Action buttons */}
           <Box sx={{ display: "flex", justifyContent: "flex-end", gap: 1, mt: 2 }}>
-            <Button variant="outlined" className="filter-button" onClick={clearFilters}>
+            <Button variant="outlined" className="filter-button outlined" onClick={clearFilters}>
               Clear
             </Button>
             <Button variant="contained" className="filter-button" onClick={applyFilters}>

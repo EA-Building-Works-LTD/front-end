@@ -2,10 +2,10 @@
 
 .appointments-container {
     padding: 24px;
-    font-family: "Inter", sans-serif;
-    color: #333;
+    font-family: 'Poppins', 'Roboto', 'Helvetica', sans-serif;
+    color: #2B2D42;
+    background-color: #F8F9FA;
     min-height: 100vh;
-    background-color: #f7f7f7; /* or your app background */
     margin-top: 25px;
     /* margin-bottom: 25px; */
   }
@@ -15,7 +15,7 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 16px;
+    margin-bottom: 24px;
   }
   
   .today-appointments {
@@ -32,96 +32,138 @@
     margin-bottom: 24px;
   }
   
-  .today-card {
-    border-left: 4px solid #2A9D8F;
-    background-color: #f0f7f6;
-  }
-  
-  /* Single appointment card => same style as in your lead detail drawer */
-  .appointment-card {
-    border: 1px solid #eaeaea;
-    border-radius: 8px;
-    background-color: #fff;
-    padding: 16px;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 16px;
+  /* Simplified Appointment Card */
+  .appointment-card-simple {
+    background-color: white;
+    border-radius: 12px;
     margin-bottom: 16px;
+    padding: 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
     transition: all 0.2s ease;
+    overflow: hidden;
     cursor: pointer;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
   }
   
-  .appointment-card:hover {
+  .appointment-card-simple:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
-    border-color: #2A9D8F;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
   }
   
-  .appointment-card:hover .appointment-right svg {
-    transform: translateX(3px);
-  }
-  
-  /* Left column => day + date */
-  .appointment-left {
+  .appointment-header {
     display: flex;
-    flex-direction: column;
-    min-width: 110px;
-  }
-  .appointment-day {
-    color: #27ae60;
-    font-size: 0.9rem;
-    font-weight: 500;
-  }
-  .appointment-date-h1 {
-    font-size: 1rem;
-    font-weight: 600;
-    margin: 4px 0;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px;
+    background: linear-gradient(90deg, #2A9D8F 0%, #264653 100%);
+    color: white;
   }
   
-  /* Middle column => title, address, builder */
-  .appointment-center {
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    flex: 1;
-  }
-  .appointment-title-row {
+  .appointment-title-container {
     display: flex;
     align-items: center;
-    gap: 6px;
-  }
-  .appointment-title {
-    font-size: 0.9rem;
-    color: #333;
-    font-weight: 400;
-  }
-  .appointment-location {
-    font-size: 0.85rem;
-    color: #666;
-  }
-  .appointment-person {
-    font-size: 0.85rem;
-    color: #333;
-    margin-top: 4px;
+    gap: 12px;
   }
   
-  /* Right column => chevron icon */
-  .appointment-right {
+  .appointment-type {
+    font-weight: 600;
+    font-size: 1.1rem;
+    color: white;
+    margin: 0;
+  }
+  
+  .appointment-content {
+    padding: 16px;
+  }
+  
+  .appointment-with {
     display: flex;
+    align-items: center;
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background-color: #F3F4F6;
+    border-radius: 8px;
+  }
+  
+  .appointment-with-icon {
+    color: #2A9D8F;
+    margin-right: 8px;
+    flex-shrink: 0;
+  }
+  
+  .appointment-datetime {
+    display: flex;
+    align-items: flex-start;
+    font-size: 0.95rem;
+    color: #555;
+    margin-bottom: 12px;
+    padding: 8px 12px;
+    background-color: #F3F4F6;
+    border-radius: 8px;
+  }
+  
+  .appointment-datetime-icon {
+    color: #2A9D8F;
+    margin-right: 8px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  
+  .appointment-datetime Typography {
+    line-height: 1.4;
+    word-break: normal;
+    overflow-wrap: break-word;
+  }
+  
+  .appointment-location {
+    display: flex;
+    align-items: flex-start;
+    font-size: 0.9rem;
+    color: #777;
+    padding: 8px 12px;
+    background-color: #F3F4F6;
+    border-radius: 8px;
+  }
+  
+  .appointment-location-icon {
+    color: #2A9D8F;
+    margin-right: 8px;
+    margin-top: 2px;
+    flex-shrink: 0;
+  }
+  
+  .appointment-empty {
+    display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
+    padding: 32px 16px;
+    background-color: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    text-align: center;
   }
   
-  .appointment-right svg {
-    transition: transform 0.2s ease;
+  .appointment-empty-icon {
+    font-size: 48px;
+    color: #CED4DA;
+    margin-bottom: 16px;
   }
   
-  /* 3-dots icon alignment */
-  .appointment-dots {
-    align-self: flex-start;
-    color: #999;
+  .appointment-empty-text {
+    color: #6C757D;
+    margin-bottom: 16px;
+    font-size: 1rem;
+  }
+  
+  /* Today card specific styles */
+  .today-card {
+    border-left: 4px solid #2A9D8F;
+  }
+  
+  .today-card .appointment-header {
+    background: linear-gradient(90deg, #2A9D8F 0%, #1E7168 100%);
   }
   
   /* Example: for narrower screens, you might make them full width stacked,
