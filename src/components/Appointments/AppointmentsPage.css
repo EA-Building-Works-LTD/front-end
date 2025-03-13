@@ -10,6 +10,33 @@
     /* margin-bottom: 25px; */
   }
   
+  /* Appointments header with today count */
+  .appointments-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  
+  .today-appointments {
+    display: flex;
+    align-items: center;
+    background-color: #f0f7f6;
+    padding: 8px 16px;
+    border-radius: 20px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  
+  /* Today's appointments section */
+  .today-section {
+    margin-bottom: 24px;
+  }
+  
+  .today-card {
+    border-left: 4px solid #2A9D8F;
+    background-color: #f0f7f6;
+  }
+  
   /* Single appointment card => same style as in your lead detail drawer */
   .appointment-card {
     border: 1px solid #eaeaea;
@@ -21,6 +48,19 @@
     justify-content: space-between;
     gap: 16px;
     margin-bottom: 16px;
+    transition: all 0.2s ease;
+    cursor: pointer;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  }
+  
+  .appointment-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    border-color: #2A9D8F;
+  }
+  
+  .appointment-card:hover .appointment-right svg {
+    transform: translateX(3px);
   }
   
   /* Left column => day + date */
@@ -67,6 +107,17 @@
     margin-top: 4px;
   }
   
+  /* Right column => chevron icon */
+  .appointment-right {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  
+  .appointment-right svg {
+    transition: transform 0.2s ease;
+  }
+  
   /* 3-dots icon alignment */
   .appointment-dots {
     align-self: flex-start;
@@ -78,6 +129,17 @@
   @media (max-width: 768px) {
     .appointments-container {
       padding: 16px;
+    }
+    
+    .appointments-header {
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 16px;
+    }
+    
+    .today-appointments {
+      width: 100%;
+      justify-content: center;
     }
   }
   

@@ -187,6 +187,174 @@ let theme = createTheme({
       xl: 1920,
     },
   },
+  components: {
+    // MUI Button customization
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          borderRadius: SHAPE.buttonBorderRadius,
+          textTransform: "none",
+          fontWeight: 500,
+          boxShadow: "none",
+          padding: "8px 16px",
+          "&:hover": {
+            boxShadow: "0 4px 8px rgba(0, 0, 0, 0.1)",
+          },
+        },
+        contained: {
+          "&:hover": {
+            boxShadow: "0 6px 10px rgba(0, 0, 0, 0.15)",
+          },
+        },
+        containedPrimary: {
+          "&:hover": {
+            backgroundColor: COLORS.primary.dark,
+          },
+        },
+        containedSecondary: {
+          "&:hover": {
+            backgroundColor: COLORS.secondary.dark,
+          },
+        },
+        outlined: {
+          borderWidth: "1.5px",
+          "&:hover": {
+            borderWidth: "1.5px",
+          },
+        },
+        text: {
+          "&:hover": {
+            backgroundColor: alpha(COLORS.primary.main, 0.08),
+          },
+        },
+      },
+    },
+    // MUI Card customization
+    MuiCard: {
+      styleOverrides: {
+        root: {
+          borderRadius: SHAPE.cardBorderRadius,
+          boxShadow: "0 2px 12px rgba(0, 0, 0, 0.08)",
+          overflow: "hidden",
+          transition: "transform 0.2s ease, box-shadow 0.2s ease",
+          "&:hover": {
+            boxShadow: "0 6px 16px rgba(0, 0, 0, 0.1)",
+          },
+        },
+      },
+    },
+    // MUI Paper customization
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          borderRadius: SHAPE.borderRadius,
+        },
+        elevation1: {
+          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.08)",
+        },
+        elevation2: {
+          boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
+        },
+      },
+    },
+    // MUI AppBar customization
+    MuiAppBar: {
+      styleOverrides: {
+        root: {
+          boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
+          backgroundImage: `linear-gradient(90deg, ${COLORS.primary.main} 0%, ${COLORS.primary.dark} 100%)`,
+          borderRadius: 0,
+        },
+      },
+    },
+    // MUI Drawer customization
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          backgroundImage: `linear-gradient(135deg, ${COLORS.neutral.dark} 0%, ${COLORS.primary.dark} 100%)`,
+          color: "#FFFFFF",
+        },
+      },
+    },
+    // MUI TextField customization
+    MuiTextField: {
+      styleOverrides: {
+        root: {
+          "& .MuiOutlinedInput-root": {
+            borderRadius: SHAPE.borderRadius,
+            "&:hover .MuiOutlinedInput-notchedOutline": {
+              borderColor: COLORS.primary.main,
+            },
+            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
+              borderColor: COLORS.primary.main,
+              borderWidth: 2,
+            },
+          },
+        },
+      },
+    },
+    // MUI Table customization
+    MuiTableCell: {
+      styleOverrides: {
+        head: {
+          fontWeight: 600,
+          backgroundColor: COLORS.background.light,
+          color: COLORS.text.primary,
+        },
+      },
+    },
+    // MUI List customization
+    MuiListItem: {
+      styleOverrides: {
+        root: {
+          borderRadius: SHAPE.borderRadius,
+          "&.Mui-selected": {
+            backgroundColor: alpha(COLORS.primary.main, 0.12),
+            "&:hover": {
+              backgroundColor: alpha(COLORS.primary.main, 0.18),
+            },
+          },
+        },
+      },
+    },
+    // MUI Chip customization
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          borderRadius: 16,
+        },
+      },
+    },
+    // MUI Avatar customization
+    MuiAvatar: {
+      styleOverrides: {
+        root: {
+          backgroundColor: COLORS.primary.main,
+        },
+      },
+    },
+    // MUI Tabs customization
+    MuiTab: {
+      styleOverrides: {
+        root: {
+          textTransform: "none",
+          fontWeight: 500,
+          "&.Mui-selected": {
+            fontWeight: 600,
+          },
+        },
+      },
+    },
+    // MUI Dialog customization
+    MuiDialog: {
+      styleOverrides: {
+        paper: {
+          borderRadius: SHAPE.cardBorderRadius,
+          boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
+        },
+      },
+    },
+  },
 });
 
 // Add component overrides
@@ -267,6 +435,7 @@ theme = createTheme(theme, {
         root: {
           boxShadow: "0 2px 10px rgba(0, 0, 0, 0.1)",
           backgroundImage: `linear-gradient(90deg, ${COLORS.primary.main} 0%, ${COLORS.primary.dark} 100%)`,
+          borderRadius: 0,
         },
       },
     },

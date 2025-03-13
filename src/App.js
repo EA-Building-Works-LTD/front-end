@@ -30,9 +30,9 @@ import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 
 // IMPORTANT: Import jwtDecode as default from 'jwt-decode'
-import { jwtDecode } from "jwt-decode";
+import { jwtDecode } from "jwt-decode"; 
 
-import { ThemeProvider, useTheme } from "@mui/material/styles";
+import { ThemeProvider } from "@mui/material/styles";
 import "./App.css";
 import theme from "./theme";
 
@@ -60,10 +60,13 @@ function App() {
   const [authChecked, setAuthChecked] = useState(false);
   const [drawerOpen, setDrawerOpen] = useState(false);
   const isDesktop = useMediaQuery("(min-width:1025px)");
-  const isTablet = useMediaQuery("(min-width:601px) and (max-width:1024px)");
-  const isMobile = useMediaQuery("(max-width:600px)");
+  // const isTablet = useMediaQuery("(min-width:601px) and (max-width:1024px)");
+  // const isMobile = useMediaQuery("(max-width:600px)");
   const location = useLocation();
   const [username, setUsername] = useState("");
+
+  // Check if current path is a lead detail page
+  const isLeadDetailPage = location.pathname.includes('/my-leads/') && location.pathname !== '/my-leads';
 
   useEffect(() => {
     const token = localStorage.getItem("token");
@@ -141,8 +144,8 @@ function App() {
           <Box className="app-container">
             <CssBaseline />
 
-            {/* AppBar for mobile/tablet */}
-            {user && !isDesktop && (
+            {/* AppBar for mobile/tablet - hide on lead detail page */}
+            {user && !isDesktop && !isLeadDetailPage && (
               <AppBar position="fixed" className="appbar">
                 <Toolbar className="toolbar">
                   <IconButton
@@ -386,7 +389,7 @@ function App() {
               className="main-content"
               sx={{
                 marginLeft: isDesktop && user ? `${drawerWidth}px` : 0,
-                paddingTop: user && !isDesktop ? "64px" : "0",
+                paddingTop: user && !isDesktop && !isLeadDetailPage ? "64px" : "0",
               }}
             >
               <Routes>

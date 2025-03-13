@@ -8,16 +8,26 @@ import {
   IconButton,
   Menu,
   MenuItem,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
 } from "@mui/material";
 import MoreVertIcon from "@mui/icons-material/MoreVert";
+import DescriptionIcon from "@mui/icons-material/Description";
+import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
+import CheckCircleIcon from "@mui/icons-material/CheckCircle";
+import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
+import PersonIcon from "@mui/icons-material/Person";
 import { formatTimestamp } from "../utils/dateUtils";
 import useLocalStorageState from "../hooks/useLocalStorageState";
-import './Leads/LeadDetailDrawer.css';
+import './Leads/LeadDetailMobile.css';
 
 export default function ProposalsPage({ onCreateProposal }) {
   const [allLeadData, setAllLeadData] = useLocalStorageState("myLeadData", {});
   const [proposalMenuAnchor, setProposalMenuAnchor] = useState(null);
   const [proposalMenuTarget, setProposalMenuTarget] = useState(null);
+  const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
 
   // Gather proposals from all leads, tagging each with leadId & leadName
   const proposals = Object.keys(allLeadData).reduce((acc, leadId) => {
@@ -52,18 +62,86 @@ export default function ProposalsPage({ onCreateProposal }) {
     setAllLeadData((prev) => {
       const leadData = prev[proposalMenuTarget.leadId];
       if (!leadData) return prev;
-      const updatedProposals = leadData.proposals.map((p) =>
-        p.id === proposalMenuTarget.id ? { ...p, status: newStatus } : p
-      );
+      
+      const updatedProposals = leadData.proposals.map((p) => {
+        if (p.id === proposalMenuTarget.id) {
+          // Update dateAccepted based on the new status
+          let dateAccepted = p.dateAccepted;
+          if (newStatus === "Completed") {
+            dateAccepted = Date.now(); // Set to current date if completed
+          } else if (newStatus === "Pending") {
+            dateAccepted = null; // Set to null if pending
+          }
+          
+          // Add activity log entry
+          const activities = leadData.activities || [];
+          const statusActivity = {
+            id: Date.now(),
+            timestamp: Date.now(),
+            title: "Proposal Status Updated",
+            subtext: `Proposal #${p.proposalNumber} changed status from ${p.status} to ${newStatus}`,
+          };
+          
+          activities.push(statusActivity);
+          
+          return { ...p, status: newStatus, dateAccepted };
+        }
+        return p;
+      });
+      
       return {
         ...prev,
         [proposalMenuTarget.leadId]: {
           ...leadData,
           proposals: updatedProposals,
+          activities: leadData.activities || [],
         },
       };
     });
     handleProposalMenuClose();
+  };
+
+  const handleDeleteProposalConfirm = () => {
+    setOpenDeleteDialog(true);
+  };
+
+  const handleDeleteProposal = () => {
+    if (!proposalMenuTarget || !proposalMenuTarget.leadId) return;
+    
+    setAllLeadData((prev) => {
+      const leadData = prev[proposalMenuTarget.leadId];
+      if (!leadData) return prev;
+      
+      // Filter out the proposal with the given ID
+      const updatedProposals = leadData.proposals.filter(
+        (p) => p.id !== proposalMenuTarget.id
+      );
+      
+      // Add activity log entry if you want to track deletions
+      const activities = leadData.activities || [];
+      const deleteActivity = {
+        id: Date.now(),
+        timestamp: Date.now(),
+        title: "Proposal Deleted",
+        subtext: `Proposal #${proposalMenuTarget.proposalNumber} was deleted.`,
+      };
+      
+      return {
+        ...prev,
+        [proposalMenuTarget.leadId]: {
+          ...leadData,
+          proposals: updatedProposals,
+          activities: [...activities, deleteActivity],
+        },
+      };
+    });
+    
+    setOpenDeleteDialog(false);
+    handleProposalMenuClose();
+  };
+
+  const cancelDeleteProposal = () => {
+    setOpenDeleteDialog(false);
   };
 
   return (
@@ -76,155 +154,87 @@ export default function ProposalsPage({ onCreateProposal }) {
           justifyContent: "space-between",
           alignItems: "center",
           mb: 2,
+          p: 2,
         }}
       >
-        <Typography className="subsection-title">Proposals</Typography>
-        {/* e.g. If you want a create button:
-          <Button variant="contained" onClick={onCreateProposal}>
-            Create Proposal
-          </Button>
-        */}
+        <Typography variant="h6" sx={{ fontWeight: 600 }}>All Proposals</Typography>
       </Box>
 
       {sortedProposals.length === 0 ? (
-        <Typography variant="body2">No proposals available.</Typography>
+        <Box className="empty-state">
+          <DescriptionIcon sx={{ fontSize: 48, color: '#E0E0E0', mb: 2 }} />
+          <Typography sx={{ color: "#757575", mb: 1 }}>No proposals available</Typography>
+          <Typography variant="body2" sx={{ color: "#9E9E9E", textAlign: "center", mb: 2 }}>
+            Create proposals from your lead details page
+          </Typography>
+        </Box>
       ) : (
         sortedProposals.map((proposal) => {
           const sentDateStr = proposal.dateSent
             ? formatTimestamp(proposal.dateSent)
             : "—";
-          const acceptedDateStr = proposal.dateAccepted
-            ? formatTimestamp(proposal.dateAccepted)
-            : "—";
+          const acceptedDateStr = proposal.status === "Completed" 
+            ? (proposal.dateAccepted ? formatTimestamp(proposal.dateAccepted) : formatTimestamp(Date.now()))
+            : proposal.status === "Pending" 
+              ? "Pending" 
+              : "—";
           const isPending = proposal.status === "Pending";
 
           return (
             <Box
               key={`${proposal.leadId}-${proposal.id}`}
-              className="proposal-card2"
-              sx={{
-                mb: 2,
-                p: 2,
-                border: "1px solid #ddd",
-                borderRadius: "8px",
-                // On phones, stack vertically; on tablets+ go row
-                display: "flex",
-                flexDirection: {
-                  xs: "column",
-                  sm: "row",
-                },
-                alignItems: {
-                  xs: "flex-start",
-                  sm: "center",
-                },
-                justifyContent: "space-between",
-                gap: 2, // spacing when wrapping
-              }}
+              className="proposal-card"
             >
-              {/* Left side: proposal info */}
-              <Box
-                className="proposal-card-left"
-                sx={{ width: { xs: "100%", sm: "60%" } }}
-              >
-                <Box
-                  className="proposal-id-row"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    mb: 1,
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Typography
-                    className="proposal-id"
-                    sx={{ fontWeight: "bold", mr: 1 }}
-                  >
+              <Box className="proposal-header">
+                <Box className="proposal-title-container">
+                  <Typography className="proposal-number">
                     #{proposal.proposalNumber}
                   </Typography>
-                  <Typography className="proposal-name">
-                    {proposal.inquiryTitle}
-                  </Typography>
-                </Box>
-                <Box
-                  className="proposal-dates"
-                  sx={{ fontSize: "0.875rem", color: "#555", mb: 1 }}
-                >
-                  <Typography
-                    className="proposal-sent"
-                    sx={{ display: "inline-block", mr: 2 }}
+                  <Box 
+                    className={`proposal-status ${proposal.status.toLowerCase()}`}
                   >
-                    Sent date: {sentDateStr}
-                  </Typography>
-                  <Typography
-                    className="proposal-accepted"
-                    sx={{ display: "inline-block" }}
-                  >
-                    Accepted date: {acceptedDateStr}
-                  </Typography>
+                    {proposal.status}
+                  </Box>
                 </Box>
-                <Typography variant="caption" sx={{ color: "#999" }}>
-                  Lead: {proposal.leadName}
-                </Typography>
+                <IconButton onClick={(e) => handleProposalMenuOpen(e, proposal)}>
+                  <MoreVertIcon />
+                </IconButton>
               </Box>
-
-              {/* Right side: amount + status + menu */}
-              <Box
-                className="proposal-card-right"
-                sx={{
-                  display: "flex",
-                  alignItems: "center",
-                  // On mobile, left-aligned; on tablets+ push to the end
-                  justifyContent: {
-                    xs: "flex-start",
-                    sm: "flex-end",
-                  },
-                  width: { xs: "100%", sm: "40%" },
-                }}
-              >
-                <Box
-                  className="proposal-amount-row"
-                  sx={{
-                    display: "flex",
-                    alignItems: "center",
-                    flexWrap: "wrap",
-                  }}
-                >
-                  <Typography
-                    className="proposal-amount-label"
-                    sx={{ mr: 0.5 }}
-                  >
-                    Amount:
-                  </Typography>
-                  <Typography
-                    className="proposal-amount-value"
-                    sx={{ fontWeight: 600, mr: 1 }}
-                  >
-                    £{proposal.amount}
-                  </Typography>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    sx={{
-                      backgroundColor: isPending ? "#f39c12" : "#2ecc71",
-                      color: "#fff",
-                      fontWeight: 600,
-                      textTransform: "none",
-                      mr: 1,
-                      mb: { xs: 1, sm: 0 },
-                    }}
-                  >
-                    {proposal.status.toUpperCase()}
-                  </Button>
-                  <IconButton
-                    className="proposal-dots"
-                    onClick={(e) => handleProposalMenuOpen(e, proposal)}
-                    sx={{
-                      // Ensure the icon is right next to the button
-                      mr: { xs: 0, sm: 0 },
-                    }}
-                  >
-                    <MoreVertIcon />
-                  </IconButton>
+              
+              <Typography className="proposal-inquiry-title">
+                {proposal.inquiryTitle}
+              </Typography>
+              
+              <Box className="proposal-amount-container">
+                <Typography className="proposal-amount-label">Amount:</Typography>
+                <Typography className="proposal-amount-value">£{proposal.amount}</Typography>
+              </Box>
+              
+              <Box className="proposal-dates">
+                <Box className="proposal-date-item">
+                  <PersonIcon className="proposal-date-icon" />
+                  <Box>
+                    <Typography className="proposal-date-label">Customer:</Typography>
+                    <Typography className="proposal-date-value">{proposal.leadName}</Typography>
+                  </Box>
+                </Box>
+                
+                <Box className="proposal-date-item">
+                  <CalendarTodayIcon className="proposal-date-icon" />
+                  <Box>
+                    <Typography className="proposal-date-label">Sent:</Typography>
+                    <Typography className="proposal-date-value">{sentDateStr}</Typography>
+                  </Box>
+                </Box>
+                
+                <Box className="proposal-date-item">
+                  <CheckCircleIcon className={`proposal-date-icon ${proposal.status === "Completed" ? "completed-icon" : ""}`} />
+                  <Box>
+                    <Typography className="proposal-date-label">Accepted:</Typography>
+                    <Typography className={`proposal-date-value ${proposal.status === "Pending" ? "pending-text" : proposal.status === "Completed" ? "completed-text" : ""}`}>
+                      {acceptedDateStr}
+                    </Typography>
+                  </Box>
                 </Box>
               </Box>
             </Box>
@@ -244,7 +254,33 @@ export default function ProposalsPage({ onCreateProposal }) {
         <MenuItem onClick={() => handleProposalStatusChange("Completed")}>
           Mark as Completed
         </MenuItem>
+        <MenuItem 
+          onClick={handleDeleteProposalConfirm}
+          sx={{ color: 'error.main' }}
+        >
+          Delete Proposal
+        </MenuItem>
       </Menu>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={openDeleteDialog} onClose={cancelDeleteProposal}>
+        <DialogTitle>Delete Proposal</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            Are you sure you want to delete this proposal? This action cannot be undone.
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={cancelDeleteProposal}>Cancel</Button>
+          <Button 
+            variant="contained" 
+            color="error" 
+            onClick={handleDeleteProposal}
+          >
+            Yes, Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
