@@ -4,7 +4,7 @@
 .lead-detail-mobile-container {
   background-color: #F8F9FA;
   min-height: 100vh;
-  padding-bottom: 80px; /* Extra padding for bottom navigation */
+  padding-bottom: 140px; /* Increased from 100px to account for much taller navigation */
 }
 
 /* Header bar */
@@ -413,34 +413,72 @@
   box-shadow: 0 -4px 12px rgba(0, 0, 0, 0.15);
   z-index: 10;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
-  padding: 12px 0;
   z-index: 100;
+  height: 96px !important;
+  display: flex;
+  justify-content: space-around;
+  align-items: center;
 }
 
 .bottom-navigation .MuiBottomNavigationAction-root {
-  padding: 12px 0;
+  padding: 16px 0;
   min-width: 60px;
-  min-height: 56px;
+  min-height: 96px; /* Increased from 72px to 96px as requested */
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+/* Make the label always visible, not just on selection */
+.bottom-navigation .MuiBottomNavigationAction-label {
+  font-size: 0.7rem; /* Further reduced from 0.75rem to 0.7rem for better fit */
+  margin-top: 4px; /* Reduced from 6px to 4px for tighter spacing */
+  font-weight: 500;
+  opacity: 1 !important; /* Force label to always be visible */
+  transform: none !important; /* Prevent transform on selection */
+  transition: color 0.2s ease !important; /* Only transition the color */
+  line-height: 1.2; /* Ensure consistent line height */
+  text-align: center; /* Center text */
+  width: 100%; /* Full width to ensure alignment */
+}
+
+/* Override Material UI's default behavior of hiding labels */
+.bottom-navigation .MuiBottomNavigationAction-root:not(.Mui-selected) .MuiBottomNavigationAction-label {
+  font-size: 0.7rem !important; /* Match the selected size */
+  opacity: 0.8 !important; /* Slightly dimmer when not selected */
 }
 
 .bottom-navigation .MuiBottomNavigationAction-root.Mui-selected {
   color: #2A9D8F;
 }
 
-.bottom-navigation .MuiBottomNavigationAction-label {
-  font-size: 0.75rem;
-  margin-top: 6px;
-  font-weight: 500;
+.bottom-navigation .MuiBottomNavigationAction-root:not(.Mui-selected) {
+  color: #6C757D; /* Gray color for non-selected items */
 }
 
 .bottom-navigation .MuiBottomNavigationAction-root .MuiSvgIcon-root {
-  font-size: 1.5rem;
+  font-size: 2rem; /* Standardized size for all icons */
+  margin-bottom: 0; /* Remove bottom margin and let the parent control spacing */
+  width: 2rem; /* Fixed width */
+  height: 2rem; /* Fixed height */
+  display: block; /* Ensure block display */
 }
 
-/* Tab content */
+/* Fix for icon alignment */
+.bottom-navigation .MuiBottomNavigationAction-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+/* Tab content - adjust padding to account for taller navigation */
 .tab-content {
   padding: 16px;
-  padding-bottom: 120px;
+  padding-bottom: 200px; /* Increased from 180px to account for much taller navigation */
 }
 
 /* Activity tab */
@@ -796,10 +834,10 @@
   line-height: 1.5;
 }
 
-/* Floating action button */
+/* Floating action button - adjust position for taller navigation */
 .fab {
   position: fixed;
-  bottom: 100px;
+  bottom: 180px; /* Increased from 160px to account for much taller navigation */
   right: 16px;
   z-index: 99;
 }
