@@ -7,6 +7,7 @@ import {
   Chip, 
   Divider, 
   IconButton,
+  CircularProgress,
 } from "@mui/material";
 import PersonIcon from "@mui/icons-material/Person";
 import LocationOnIcon from "@mui/icons-material/LocationOn";
@@ -15,7 +16,8 @@ import EventIcon from "@mui/icons-material/Event";
 import TodayIcon from "@mui/icons-material/Today";
 import ChevronRightIcon from "@mui/icons-material/ChevronRight";
 import { useNavigate } from "react-router-dom";
-import useLocalStorageState from '../../hooks/useLocalStorageState';
+import useFirebaseState from '../../hooks/useFirebaseState';
+import { auth } from "../../firebase/config";
 import "./AppointmentsPage.css";
 
 // Helper function to format the full appointment date
@@ -47,7 +49,7 @@ function formatFullAppointmentDate(timestamp) {
 }
 
 /**
- * Gather all appointments from local storage.
+ * Gather all appointments from Firebase.
  * We rely on leadObj.address/builder, which must
  * be stored in LeadDetailDrawer's "initialLeadObj".
  */
@@ -120,7 +122,12 @@ function isToday(dateString) {
 }
 
 export default function AppointmentsPage() {
-  const [myLeadData] = useLocalStorageState("myLeadData", {});
+  const [myLeadData, setMyLeadData, leadDataLoading] = useFirebaseState(
+    "leadData",
+    auth.currentUser?.uid || "anonymous",
+    "myLeadData",
+    {}
+  );
   const navigate = useNavigate();
   
   // Build the list of appointments
@@ -182,6 +189,17 @@ export default function AppointmentsPage() {
       </Typography>
     </Box>
   );
+  
+  // Show loading state while fetching data
+  if (leadDataLoading) {
+    return (
+      <div className="appointments-container">
+        <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+          <CircularProgress />
+        </Box>
+      </div>
+    );
+  }
   
   return (
     <div className="appointments-container">

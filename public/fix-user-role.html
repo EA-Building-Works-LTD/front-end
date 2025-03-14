@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fix User Role</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1 {
+      color: #2A9D8F;
+    }
+    .card {
+      border: 1px solid #ddd;
+      border-radius: 8px;
+      padding: 20px;
+      margin-bottom: 20px;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    button {
+      background-color: #2A9D8F;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    button:hover {
+      background-color: #238579;
+    }
+    #output {
+      background-color: #f5f5f5;
+      padding: 15px;
+      border-radius: 4px;
+      margin-top: 20px;
+      white-space: pre-wrap;
+      font-family: monospace;
+    }
+  </style>
+</head>
+<body>
+  <h1>Fix User Role</h1>
+  
+  <div class="card">
+    <h2>Fix Zain's User Role</h2>
+    <p>This tool will ensure that Zain's account has the correct role in Firestore.</p>
+    <p>Click the button below to fix the user role:</p>
+    
+    <button id="fixRoleBtn">Fix User Role</button>
+    
+    <div id="output"></div>
+  </div>
+  
+  <script type="module">
+    // Import Firebase modules
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-app.js";
+    import { getAuth, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-auth.js";
+    import { getFirestore, doc, getDoc, setDoc, collection, query, where, getDocs } from "https://www.gstatic.com/firebasejs/9.6.10/firebase-firestore.js";
+    
+    // Your Firebase configuration
+    const firebaseConfig = {
+      apiKey: "AIzaSyDCjcYj-0-bJX0nkgJiUE1fZ3_ZL3_xR8c",
+      authDomain: "ea-building-works.firebaseapp.com",
+      projectId: "ea-building-works",
+      storageBucket: "ea-building-works.appspot.com",
+      messagingSenderId: "1042989378735",
+      appId: "1:1042989378735:web:9e8d2a1d8e5a8e8f0a8e8f"
+    };
+    
+    // Initialize Firebase
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getFirestore(app);
+    
+    // Function to log to the output div
+    function log(message) {
+      const output = document.getElementById('output');
+      output.textContent += message + '\n';
+    }
+    
+    // Function to ensure a user exists in Firestore with the correct role
+    async function ensureUserInFirestore(email, password, displayName, role) {
+      try {
+        log(`Signing in as ${email}...`);
+        
+        // First, sign in to get the user's UID
+        const userCredential = await signInWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        
+        log(`Successfully signed in. UID: ${user.uid}`);
+        
+        // Check if user exists in Firestore
+        const userRef = doc(db, 'users', user.uid);
+        const userDoc = await getDoc(userRef);
+        
+        if (!userDoc.exists()) {
+          // User doesn't exist in Firestore, create them
+          log(`User doesn't exist in Firestore. Creating...`);
+          
+          await setDoc(userRef, {
+            email,
+            displayName: displayName || user.displayName || email,
+            role,
+            createdAt: new Date()
+          });
+          
+          log(`Created user in Firestore: ${email} with role ${role}`);
+        } else {
+          // User exists, update their role if needed
+          const userData = userDoc.data();
+          log(`User exists in Firestore. Current role: ${userData.role || 'No role set'}`);
+          
+          if (userData.role !== role) {
+            await setDoc(userRef, {
+              ...userData,
+              role
+            }, { merge: true });
+            
+            log(`Updated role for ${email} from ${userData.role || 'No role'} to ${role}`);
+          } else {
+            log(`User ${email} already has role ${role}`);
+          }
+        }
+        
+        return user.uid;
+      } catch (error) {
+        log(`Error: ${error.message}`);
+        throw error;
+      }
+    }
+    
+    // Add click event listener to the button
+    document.getElementById('fixRoleBtn').addEventListener('click', async () => {
+      try {
+        document.getElementById('output').textContent = '';
+        log('Fixing Zain\'s user role...');
+        
+        // Ensure Zain exists in Firestore with the correct role
+        const uid = await ensureUserInFirestore(
+          'gcconstruction@live.co.uk',
+          'Zain2025!*',
+          'Zain',
+          'builder'
+        );
+        
+        log(`Successfully fixed Zain's user role. UID: ${uid}`);
+        log('Please try logging in again.');
+      } catch (error) {
+        log(`Error fixing Zain's user role: ${error.message}`);
+      }
+    });
+  </script>
+</body>
+</html> 

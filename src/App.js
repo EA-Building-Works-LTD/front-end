@@ -17,6 +17,11 @@ import {
   Divider,
   Tooltip,
   Avatar,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogContentText,
+  DialogActions,
 } from "@mui/material";
 import { Routes, Route, Navigate, Link, useLocation } from "react-router-dom";
 import MenuIcon from "@mui/icons-material/Menu";
@@ -28,6 +33,9 @@ import DescriptionIcon from "@mui/icons-material/Description";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
+import StorageIcon from "@mui/icons-material/Storage";
+import BuildIcon from "@mui/icons-material/Build";
+import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 
 // IMPORTANT: Import jwtDecode as default from 'jwt-decode'
 import { jwtDecode } from "jwt-decode"; 
@@ -45,6 +53,9 @@ import Dashboard from "./components/Dashboard";
 import LeadDetailMobile from "./components/Leads/LeadDetailMobile";
 import AppointmentsPage from "./components/Appointments/AppointmentsPage";
 import ProposalsPage from "./components/ProposalsPage";
+import DataMigration from "./components/Admin/DataMigration";
+import AdminTools from "./components/Admin/AdminTools";
+import BuilderManagement from "./components/Admin/BuilderManagement";
 
 // Context providers
 import { LeadsProvider } from "./components/Leads/LeadsContext";
@@ -52,6 +63,10 @@ import { UserRoleProvider } from "./components/Auth/UserRoleContext";
 
 // UI
 import BoldListItemText from "./components/Common/BoldListItemText";
+import { onAuthStateChange } from "./firebase/auth";
+import { logout } from "./firebase/auth";
+
+import { migrateLocalStorageToFirebase, needsMigration } from './utils/migrateToFirebase';
 
 const drawerWidth = 250;
 
@@ -64,56 +79,78 @@ function App() {
   // const isMobile = useMediaQuery("(max-width:600px)");
   const location = useLocation();
   const [username, setUsername] = useState("");
+  const [showMigrationDialog, setShowMigrationDialog] = useState(false);
+  const [migrationInProgress, setMigrationInProgress] = useState(false);
+  const [migrationComplete, setMigrationComplete] = useState(false);
 
   // Check if current path is a lead detail page
   const isLeadDetailPage = location.pathname.includes('/my-leads/') && location.pathname !== '/my-leads';
 
+  // Set up Firebase auth state listener
   useEffect(() => {
-    const token = localStorage.getItem("token");
-    const role = localStorage.getItem("role");
-    const storedUsername = localStorage.getItem("username");
-
-    if (storedUsername) {
-      setUsername(storedUsername);
-    }
-
-    if (!token || !role) {
-      setAuthChecked(true);
-      return;
-    }
-
-    try {
-      const { exp } = jwtDecode(token);
-      if (exp * 1000 < Date.now()) {
-        localStorage.removeItem("token");
-        localStorage.removeItem("role");
-        setUser(null);
+    const unsubscribe = onAuthStateChange((userData) => {
+      if (userData) {
+        // User is signed in
+        console.log("App: Auth state change - User signed in:", userData.user.email);
+        setUser(userData);
+        setUsername(userData.user.displayName || userData.user.email);
       } else {
-        setUser({ role });
+        // User is signed out
+        console.log("App: Auth state change - User signed out");
+        setUser(null);
+        setUsername("");
       }
-    } catch (error) {
-      localStorage.removeItem("token");
-      localStorage.removeItem("role");
-      setUser(null);
-    }
-    setAuthChecked(true);
+      setAuthChecked(true);
+    });
+
+    // Clean up the listener when the component unmounts
+    return () => unsubscribe();
   }, []);
+
+  // Check if migration is needed
+  useEffect(() => {
+    if (user && needsMigration()) {
+      setShowMigrationDialog(true);
+    }
+  }, [user]);
 
   const toggleDrawer = useCallback(() => {
     setDrawerOpen((prev) => !prev);
   }, []);
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("role");
-    localStorage.removeItem("username");
-    setUser(null);
-    setDrawerOpen(false);
+  const handleLogout = async () => {
+    try {
+      await logout();
+      setUser(null);
+      setDrawerOpen(false);
+    } catch (error) {
+      console.error("Logout error:", error);
+    }
   };
 
   // Check if a menu item is active
   const isActive = (path) => {
     return location.pathname.includes(path);
+  };
+
+  // Handle migration
+  const handleMigration = async () => {
+    setMigrationInProgress(true);
+    try {
+      const success = await migrateLocalStorageToFirebase();
+      if (success) {
+        setMigrationComplete(true);
+        // Close dialog after 2 seconds
+        setTimeout(() => {
+          setShowMigrationDialog(false);
+          setMigrationComplete(false);
+        }, 2000);
+      }
+    } catch (error) {
+      console.error('Migration error:', error);
+    } finally {
+      setMigrationInProgress(false);
+    }
   };
 
   // Show spinner until auth check is done
@@ -134,12 +171,14 @@ function App() {
     if (path.includes('appointments')) return 'Appointments';
     if (path.includes('proposals')) return 'Proposals';
     if (path.includes('calendar')) return 'Calendar';
+    if (path.includes('admin-tools')) return 'Admin Tools';
+    if (path.includes('builder-management')) return 'Builder Management';
     return 'EA Building Works CRM';
   };
 
   return (
     <ThemeProvider theme={theme}>
-      <UserRoleProvider value={user?.role || "guest"}>
+      <UserRoleProvider role={user?.role || "guest"}>
         <LeadsProvider>
           <Box className="app-container">
             <CssBaseline />
@@ -264,6 +303,154 @@ function App() {
                           <PeopleIcon />
                         </ListItemIcon>
                         <BoldListItemText primary="Leads" />
+                      </ListItemButton>
+                      
+                      <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                      
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.5)', 
+                          px: 3, 
+                          py: 1, 
+                          display: 'block',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        Administration
+                      </Typography>
+                      <ListItemButton
+                        component={Link}
+                        to="/admin-tools"
+                        className={`sidebar-listitem ${isActive('/admin-tools') ? 'active' : ''}`}
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <AdminPanelSettingsIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Admin Tools" />
+                      </ListItemButton>
+                      <ListItemButton
+                        component={Link}
+                        to="/builder-management"
+                        className={`sidebar-listitem ${isActive('/builder-management') ? 'active' : ''}`}
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <BuildIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Builder Management" />
+                      </ListItemButton>
+                      <ListItemButton
+                        component={Link}
+                        to="/data-migration"
+                        className={`sidebar-listitem ${isActive('/data-migration') ? 'active' : ''}`}
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <StorageIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Data Migration" />
+                      </ListItemButton>
+                      
+                      <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                      
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.5)', 
+                          px: 3, 
+                          py: 1, 
+                          display: 'block',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        Work Management
+                      </Typography>
+                      <ListItemButton
+                        component={Link}
+                        to="/my-leads"
+                        className={`sidebar-listitem ${isActive('/my-leads') ? 'active' : ''}`}
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <NoteAltIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="My Leads" />
+                      </ListItemButton>
+
+                      <ListItemButton
+                        component={Link}
+                        to="/appointments"
+                        className={`sidebar-listitem ${isActive('/appointments') ? 'active' : ''}`}
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <CalendarMonthIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Appointments" />
+                      </ListItemButton>
+
+                      <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                      
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.5)', 
+                          px: 3, 
+                          py: 1, 
+                          display: 'block',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        Documents
+                      </Typography>
+
+                      <ListItemButton
+                        component={Link}
+                        to="/proposals"
+                        className={`sidebar-listitem ${isActive('/proposals') ? 'active' : ''}`}
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <DescriptionIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Proposals" />
+                      </ListItemButton>
+
+                      <Divider sx={{ my: 2, bgcolor: 'rgba(255,255,255,0.1)' }} />
+                      
+                      <Typography 
+                        variant="caption" 
+                        sx={{ 
+                          color: 'rgba(255,255,255,0.5)', 
+                          px: 3, 
+                          py: 1, 
+                          display: 'block',
+                          textTransform: 'uppercase',
+                          letterSpacing: '1px',
+                          fontSize: '0.7rem'
+                        }}
+                      >
+                        Planning
+                      </Typography>
+
+                      <ListItemButton
+                        component={Link}
+                        to="/calendar"
+                        className={`sidebar-listitem ${isActive('/calendar') ? 'active' : ''}`}
+                        onClick={toggleDrawer}
+                      >
+                        <ListItemIcon className="sidebar-listicon">
+                          <CalendarTodayIcon />
+                        </ListItemIcon>
+                        <BoldListItemText primary="Calendar" />
                       </ListItemButton>
                     </>
                   )}
@@ -404,6 +591,13 @@ function App() {
                         <Route path="/dashboard" element={<Dashboard />} />
                         <Route path="/leads" element={<Leads />} />
                         <Route path="/my-leads" element={<MyLeads />} />
+                        <Route path="/my-leads/:slug" element={<LeadDetailMobile />} />
+                        <Route path="/appointments" element={<AppointmentsPage />} />
+                        <Route path="/proposals" element={<ProposalsPage />} />
+                        <Route path="/calendar" element={<CalendarView />} />
+                        <Route path="/data-migration" element={<DataMigration />} />
+                        <Route path="/admin-tools" element={<AdminTools />} />
+                        <Route path="/builder-management" element={<BuilderManagement />} />
                       </>
                     )}
 
@@ -442,6 +636,52 @@ function App() {
               </Routes>
             </Box>
           </Box>
+
+          {/* Migration Dialog */}
+          <Dialog
+            open={showMigrationDialog}
+            onClose={() => !migrationInProgress && setShowMigrationDialog(false)}
+          >
+            <DialogTitle>
+              {migrationComplete ? "Migration Complete" : "Data Migration"}
+            </DialogTitle>
+            <DialogContent>
+              <DialogContentText>
+                {migrationComplete
+                  ? "Your data has been successfully migrated to the cloud. You can now access it from any device."
+                  : "We've updated our app to use cloud storage instead of browser storage. Would you like to migrate your existing data to the cloud? This will allow you to access your data from any device."}
+              </DialogContentText>
+            </DialogContent>
+            <DialogActions>
+              {!migrationComplete && (
+                <>
+                  <Button
+                    onClick={() => setShowMigrationDialog(false)}
+                    disabled={migrationInProgress}
+                  >
+                    Skip
+                  </Button>
+                  <Button
+                    onClick={handleMigration}
+                    variant="contained"
+                    color="primary"
+                    disabled={migrationInProgress}
+                  >
+                    {migrationInProgress ? "Migrating..." : "Migrate Data"}
+                  </Button>
+                </>
+              )}
+              {migrationComplete && (
+                <Button
+                  onClick={() => setShowMigrationDialog(false)}
+                  variant="contained"
+                  color="primary"
+                >
+                  Close
+                </Button>
+              )}
+            </DialogActions>
+          </Dialog>
         </LeadsProvider>
       </UserRoleProvider>
     </ThemeProvider>

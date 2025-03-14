@@ -584,3 +584,29 @@
   max-width: 400px;
   margin: 0 auto;
 }
+
+/* Load More button for grouped view */
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin: 12px 0 24px;
+}
+
+.load-more-button {
+  margin: 0 auto !important;
+  color: #2A9D8F !important;
+  border-color: #2A9D8F !important;
+  background-color: rgba(42, 157, 143, 0.05) !important;
+  font-size: 0.85rem !important;
+  text-transform: none !important;
+  font-weight: 500 !important;
+  padding: 6px 16px !important;
+  border-radius: 20px !important;
+  transition: all 0.2s ease !important;
+}
+
+.load-more-button:hover {
+  background-color: rgba(42, 157, 143, 0.1) !important;
+  transform: translateY(-2px) !important;
+  box-shadow: 0 2px 8px rgba(42, 157, 143, 0.2) !important;
+}

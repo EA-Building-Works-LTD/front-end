@@ -23,6 +23,8 @@ import {
   InputLabel,
   Chip,
   FormHelperText,
+  Tooltip,
+  Snackbar,
 } from "@mui/material";
 import { 
   Search, 
@@ -37,18 +39,27 @@ import {
   Send,
   SortByAlpha,
   CalendarToday,
+  Sync,
 } from "@mui/icons-material";
-import axios from "axios";
-import LeadDetailDrawer from "./LeadDetailDrawer";
 import { useNavigate } from "react-router-dom";
-import useLocalStorageState from "../../hooks/useLocalStorageState";
+import useFirebaseState from "../../hooks/useFirebaseState";
+import { getLeadsByBuilder } from "../../firebase/leads";
+import { auth } from "../../firebase/config";
+import LeadDetailDrawer from "./LeadDetailDrawer";
+import { useUserRole } from "../Auth/UserRoleContext";
+import axios from "axios";
 import "./MyLeads.css";
+import { syncGoogleFormSubmissions } from "../../firebase/googleFormIntegration";
 
 const MyLeads = () => {
   // API state
   const [leads, setLeads] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [dataSource, setDataSource] = useState("firebase"); // 'firebase' or 'googleSheets'
+  
+  // Get user role from context
+  const userRole = useUserRole();
 
   // For row-click detail drawer (desktop)
   const [selectedLead, setSelectedLead] = useState(null);
@@ -113,35 +124,204 @@ const MyLeads = () => {
   // State for view mode (grouped or list)
   const [viewMode, setViewMode] = useState("list");
 
+  // State for tracking expanded stages in grouped view
+  const [expandedStages, setExpandedStages] = useState({});
+  
+  // Number of leads to show initially per stage
+  const initialLeadsPerStage = 3;
+  
+  // Number of additional leads to load each time
+  const leadsLoadIncrement = 5;
+  
+  // State to track how many leads are shown for each stage
+  const [visibleLeadsCount, setVisibleLeadsCount] = useState({});
+
   const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
 
-  // Retrieve ephemeral state and its setter
-  const [allLeadData] = useLocalStorageState("myLeadData", {});
+  // Retrieve lead data from Firebase
+  const [allLeadData, setAllLeadData, leadDataLoading] = useFirebaseState(
+    "leadData",
+    auth.currentUser?.uid || "anonymous",
+    "myLeadData",
+    {}
+  );
 
-  // Fetch leads on mount
-  useEffect(() => {
-    const fetchLeads = async () => {
-      const token = localStorage.getItem("token");
-      try {
-        const response = await axios.get(
-          `${process.env.REACT_APP_API_URL}/api/builders/my-leads`,
-          { headers: { Authorization: `Bearer ${token}` } }
-        );
-        // Sort leads by timestamp descending
-        const sortedLeads = response.data.slice().sort(
-          (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
-        );
-        setLeads(sortedLeads);
-      } catch (err) {
-        console.error("Error fetching leads:", err);
-        setError("Failed to fetch leads. Please try again later.");
-      } finally {
+  // Sync state
+  const [syncingForms, setSyncingForms] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  // Function to fetch leads
+  const fetchLeads = async () => {
+    try {
+      if (!auth.currentUser) {
+        setError("You must be logged in to view leads");
         setLoading(false);
+        return;
       }
-    };
+      
+      // Check if the user is an admin
+      const isAdmin = userRole === "admin";
+      
+      let fetchedLeads = [];
+      let source = "firebase";
+      
+      // Log current user info for debugging
+      console.log("Current user:", {
+        uid: auth.currentUser.uid,
+        email: auth.currentUser.email,
+        displayName: auth.currentUser.displayName,
+        role: userRole
+      });
+      
+      // Try to fetch from Firebase first
+      try {
+        fetchedLeads = await getLeadsByBuilder(auth.currentUser.uid, isAdmin);
+        console.log("Fetched leads from Firebase:", fetchedLeads.length);
+        
+        // If we got leads from Firebase, use them
+        if (fetchedLeads && fetchedLeads.length > 0) {
+          source = "firebase";
+        } else {
+          // If no leads in Firebase, try Google Sheets
+          throw new Error("No leads found in Firebase");
+        }
+      } catch (firebaseError) {
+        console.error("Error fetching leads from Firebase:", firebaseError);
+        
+        // Fallback to Google Sheets
+        try {
+          const token = localStorage.getItem("token");
+          const response = await axios.get(
+            `${process.env.REACT_APP_API_URL}/api/google-leads`,
+            {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          );
+          
+          fetchedLeads = response.data;
+          source = "googleSheets";
+          console.log("Fetched leads from Google Sheets:", fetchedLeads.length);
+          
+          // Log all builder names in Google Sheets for debugging
+          const builderNames = [...new Set(fetchedLeads.map(lead => lead.builder))];
+          console.log("Builder names in Google Sheets:", builderNames);
+          
+          // If not admin, filter leads by builder name for non-admin users
+          if (!isAdmin) {
+            // Get the builder's display name and email
+            const displayName = auth.currentUser.displayName || "";
+            const email = auth.currentUser.email || "";
+            console.log("Current builder:", { displayName, email });
+            
+            // Check if the user has a display name set
+            if (displayName) {
+              console.log(`Looking for leads with builder name matching displayName: "${displayName}"`);
+              
+              // Filter leads where the builder field matches the display name (case-insensitive)
+              fetchedLeads = fetchedLeads.filter(lead => {
+                if (!lead.builder) return false;
+                
+                const builderLower = lead.builder.toLowerCase().trim();
+                const displayNameLower = displayName.toLowerCase().trim();
+                
+                // Check for exact or partial matches
+                const isMatch = builderLower.includes(displayNameLower) || 
+                               displayNameLower.includes(builderLower);
+                
+                if (isMatch) {
+                  console.log(`Match found - Lead builder: "${lead.builder}" matches with displayName: "${displayName}"`);
+                }
+                
+                return isMatch;
+              });
+              
+              console.log(`Found ${fetchedLeads.length} leads matching displayName: "${displayName}"`);
+            }
+            // Special case for Zain (email: gcconstruction@live.co.uk)
+            else if (email.toLowerCase() === "gcconstruction@live.co.uk") {
+              console.log("Special case for Zain - looking for leads with 'Zain' in builder field");
+              fetchedLeads = fetchedLeads.filter(lead => {
+                if (!lead.builder) return false;
+                return lead.builder.toLowerCase().includes("zain");
+              });
+              console.log("Found Zain's leads:", fetchedLeads.length);
+            } 
+            // Fallback to email-based matching if no display name and not Zain
+            else {
+              console.log("No displayName set - falling back to email-based matching");
+              
+              // Create a set of possible builder identifiers to match against
+              const possibleMatches = new Set();
+              
+              // Extract username from email
+              if (email) {
+                const username = email.split('@')[0];
+                possibleMatches.add(username.toLowerCase());
+                
+                // Add variations of username (split by common separators)
+                username.split(/[._-]/).forEach(part => {
+                  if (part.length > 2) { // Only consider parts longer than 2 chars
+                    possibleMatches.add(part.toLowerCase());
+                  }
+                });
+              }
+              
+              console.log("Possible builder name matches from email:", [...possibleMatches]);
+              
+              // Filter leads where the builder field matches any of the possible identifiers
+              fetchedLeads = fetchedLeads.filter(lead => {
+                if (!lead.builder) return false;
+                
+                const builderLower = lead.builder.toLowerCase().trim();
+                
+                // Check if any of our possible matches are contained in the builder field
+                const isMatch = [...possibleMatches].some(match => 
+                  builderLower.includes(match) || match.includes(builderLower)
+                );
+                
+                if (isMatch) {
+                  console.log(`Match found - Lead builder: "${lead.builder}" matches with "${[...possibleMatches].find(m => builderLower.includes(m) || m.includes(builderLower))}"`);
+                }
+                
+                return isMatch;
+              });
+              
+              console.log("Filtered leads count:", fetchedLeads.length);
+            }
+          }
+        } catch (apiError) {
+          console.error("Error fetching leads from API:", apiError);
+          setError("Failed to fetch leads. Please try again later.");
+          setLoading(false);
+          return;
+        }
+      }
+      
+      // Set the data source for UI indication
+      setDataSource(source);
+      
+      // Sort leads by timestamp descending
+      const sortedLeads = fetchedLeads.sort(
+        (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
+      );
+      
+      setLeads(sortedLeads);
+    } catch (err) {
+      console.error("Error fetching leads:", err);
+      setError("Failed to fetch leads. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch leads on mount and when userRole changes
+  useEffect(() => {
     fetchLeads();
-  }, []);
+  }, [userRole]);
 
   // Helper function to check if a lead is within the specified time range
   const isLeadWithinTimeRange = (lead, days) => {
@@ -151,14 +331,14 @@ const MyLeads = () => {
     return leadDate >= timeAgo;
   };
 
-  // Merge each API lead with ephemeral state so that each lead gets a "stage" property.
+  // Merge each API lead with Firebase data so that each lead gets a "stage" property.
   // Note: This array contains ALL leads regardless of stage or age.
   // The filtering by stage happens later when the user clicks on a stage tab.
   const combinedLeads = leads.map((lead) => {
     // Check if lead is within the last 14 days
     const isWithin14Days = isLeadWithinTimeRange(lead, 14);
     
-    // Get the stored stage from local storage (if any)
+    // Get the stored stage from Firebase (if any)
     const storedStage = allLeadData[lead._id]?.stage;
     const stageManuallySet = allLeadData[lead._id]?.stageManuallySet;
     
@@ -435,6 +615,80 @@ const MyLeads = () => {
     }
   };
 
+  // Function to toggle expanded state for a stage
+  const toggleStageExpansion = (stage) => {
+    setExpandedStages(prev => ({
+      ...prev,
+      [stage]: !prev[stage]
+    }));
+  };
+  
+  // Function to load more leads for a stage
+  const loadMoreLeads = (stage, totalLeadsCount) => {
+    setVisibleLeadsCount(prev => {
+      const currentCount = prev[stage] || initialLeadsPerStage;
+      const newCount = Math.min(currentCount + leadsLoadIncrement, totalLeadsCount);
+      return {
+        ...prev,
+        [stage]: newCount
+      };
+    });
+  };
+  
+  // Function to reset visible leads count when collapsing a stage
+  const resetVisibleLeadsCount = (stage) => {
+    setVisibleLeadsCount(prev => ({
+      ...prev,
+      [stage]: initialLeadsPerStage
+    }));
+    toggleStageExpansion(stage);
+  };
+
+  // Function to sync Google Form submissions
+  const handleSyncGoogleForms = async () => {
+    if (userRole !== "admin") {
+      console.log("Only admins can sync Google Forms");
+      return;
+    }
+    
+    setSyncingForms(true);
+    setSyncMessage("");
+    
+    try {
+      // Fetch leads from Google Sheets API
+      const token = localStorage.getItem("token");
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/google-leads`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      const googleLeads = response.data;
+      
+      // Sync new submissions to Firebase
+      const result = await syncGoogleFormSubmissions(googleLeads);
+      
+      setSyncMessage(result.message);
+      setSnackbarOpen(true);
+      
+      // Refresh leads to show newly synced data
+      fetchLeads();
+    } catch (error) {
+      console.error("Error syncing Google Form submissions:", error);
+      setSyncMessage("Error syncing Google Form submissions: " + error.message);
+      setSnackbarOpen(true);
+    } finally {
+      setSyncingForms(false);
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setSnackbarOpen(false);
+  };
+
   // Render desktop table view.
   const renderDesktopTable = () => (
     <TableContainer component={Paper} className="leads-table-container">
@@ -448,6 +702,7 @@ const MyLeads = () => {
             <TableCell className="table-header">Details</TableCell>
             <TableCell className="table-header">Budget</TableCell>
             <TableCell className="table-header">Stage</TableCell>
+            <TableCell className="table-header">Source</TableCell>
           </TableRow>
         </TableHead>
         <TableBody>
@@ -501,6 +756,23 @@ const MyLeads = () => {
                   }}
                 />
               </TableCell>
+              <TableCell>
+                {lead.googleFormSubmission ? (
+                  <Tooltip title="From Google Form">
+                    <Chip 
+                      size="small" 
+                      label="Google Form" 
+                      color="primary" 
+                      variant="outlined" 
+                      sx={{ fontSize: '0.7rem' }} 
+                    />
+                  </Tooltip>
+                ) : (
+                  <Typography variant="body2" color="textSecondary">
+                    Manual Entry
+                  </Typography>
+                )}
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
@@ -521,7 +793,7 @@ const MyLeads = () => {
             <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
               {lead.fullName?.[0] || "N"}
             </Avatar>
-            <Box>
+            <Box sx={{ flexGrow: 1 }}>
               <Typography className="client-name">
                 {lead.fullName || "Unknown Name"}
               </Typography>
@@ -529,6 +801,15 @@ const MyLeads = () => {
                 {lead.phoneNumber}
               </Typography>
             </Box>
+            {lead.googleFormSubmission && (
+              <Chip 
+                size="small" 
+                label="Form" 
+                color="primary" 
+                variant="outlined" 
+                sx={{ fontSize: '0.7rem', height: 24 }} 
+              />
+            )}
           </Box>
           <Box className="card-content">
             <Typography variant="body2">
@@ -538,15 +819,31 @@ const MyLeads = () => {
               <strong>City:</strong> {lead.city || "N/A"}
             </Typography>
             <Typography variant="body2">
-              <strong>Work Required:</strong> {lead.workRequired || "N/A"}
+              <strong>Work:</strong> {lead.workRequired || "N/A"}
             </Typography>
-            <Typography variant="body2">
-              <strong>Budget:</strong> {lead.budget || "N/A"}
-            </Typography>
-            <div className={`card-stage-badge ${getStageClass(lead.stage)}`}>
-              {getStageIcon(lead.stage)}
-              <span style={{ marginLeft: '4px' }}>{lead.stage}</span>
-            </div>
+          </Box>
+          <Box className="card-footer">
+            <Chip 
+              icon={getStageIcon(lead.stage)}
+              label={lead.stage} 
+              size="small"
+              sx={{ 
+                backgroundColor: lead.stage === "New Lead" ? "#E8F5E9" :
+                                lead.stage === "In Progress" ? "#FFF3E0" :
+                                lead.stage === "Quote Sent" ? "#E1F5FE" :
+                                lead.stage === "Completed" ? "#E8F5E9" :
+                                "#FFEBEE",
+                color: lead.stage === "New Lead" ? "#2E7D32" :
+                       lead.stage === "In Progress" ? "#E65100" :
+                       lead.stage === "Quote Sent" ? "#0277BD" :
+                       lead.stage === "Completed" ? "#2E7D32" :
+                       "#C62828",
+                fontWeight: 500,
+                '& .MuiChip-icon': {
+                  color: 'inherit'
+                }
+              }}
+            />
           </Box>
         </Box>
       ))}
@@ -565,101 +862,200 @@ const MyLeads = () => {
           </Typography>
         </Box>
       ) : (
-        Object.entries(groupedLeads).map(([stage, stageLeads]) => (
-          <Box key={stage}>
-            <Box className="stage-group-header">
-              <span className={`stage-indicator ${getStageIndicatorClass(stage)}`}></span>
-              {stage}
-              <span className="stage-group-count">{stageLeads.length}</span>
-            </Box>
-            
-            {isMobile ? (
-              <Box className="mobile-cards-container">
-                {stageLeads.map((lead, i) => (
-                  <Box 
-                    key={i} 
-                    className={`mobile-lead-card ${getStageClass(lead.stage)}`} 
-                    onClick={() => handleRowClick(lead)}
-                  >
-                    <Box className="card-header">
-                      <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
-                        {lead.fullName?.[0] || "N"}
-                      </Avatar>
-                      <Box>
-                        <Typography className="client-name">
-                          {lead.fullName || "Unknown Name"}
-                        </Typography>
-                        <Typography className="client-subtext">
-                          {lead.phoneNumber}
-                        </Typography>
-                      </Box>
-                    </Box>
-                    <Box className="card-content">
-                      <Typography variant="body2">
-                        <strong>Address:</strong> {lead.address || "N/A"}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>City:</strong> {lead.city || "N/A"}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Work Required:</strong> {lead.workRequired || "N/A"}
-                      </Typography>
-                      <Typography variant="body2">
-                        <strong>Budget:</strong> {lead.budget || "N/A"}
-                      </Typography>
-                    </Box>
-                  </Box>
-                ))}
+        Object.entries(groupedLeads).map(([stage, stageLeads]) => {
+          // Determine if this stage is expanded
+          const isExpanded = expandedStages[stage] || false;
+          
+          // Get the number of leads to display
+          const currentVisibleCount = visibleLeadsCount[stage] || initialLeadsPerStage;
+          
+          // Get the leads to display (either initial count or expanded count)
+          const displayLeads = isExpanded 
+            ? stageLeads.slice(0, currentVisibleCount) 
+            : stageLeads.slice(0, initialLeadsPerStage);
+          
+          // Check if we need to show the "Load More" button
+          const hasMoreLeads = stageLeads.length > initialLeadsPerStage;
+          
+          // Check if there are more leads to load
+          const hasMoreToLoad = isExpanded && currentVisibleCount < stageLeads.length;
+          
+          return (
+            <Box key={stage}>
+              <Box className="stage-group-header">
+                <span className={`stage-indicator ${getStageIndicatorClass(stage)}`}></span>
+                {stage}
+                <span className="stage-group-count">{stageLeads.length}</span>
               </Box>
-            ) : (
-              <TableContainer component={Paper} className="leads-table-container">
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell className="table-header">Customer Name</TableCell>
-                      <TableCell className="table-header">Address</TableCell>
-                      <TableCell className="table-header">City</TableCell>
-                      <TableCell className="table-header">Work Required</TableCell>
-                      <TableCell className="table-header">Details</TableCell>
-                      <TableCell className="table-header">Budget</TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    {stageLeads.map((lead, i) => (
-                      <TableRow
-                        key={i}
+              
+              {isMobile ? (
+                <>
+                  <Box className="mobile-cards-container">
+                    {displayLeads.map((lead, i) => (
+                      <Box 
+                        key={i} 
+                        className={`mobile-lead-card ${getStageClass(lead.stage)}`} 
                         onClick={() => handleRowClick(lead)}
-                        hover
-                        style={{ cursor: "pointer" }}
                       >
-                        <TableCell>
-                          <Box className="client-cell">
-                            <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
-                              {lead.fullName?.[0] || "N"}
-                            </Avatar>
-                            <Box>
-                              <Typography className="client-name">
-                                {lead.fullName || "Unknown Name"}
-                              </Typography>
-                              <Typography className="client-subtext">
-                                {lead.phoneNumber}
-                              </Typography>
-                            </Box>
+                        <Box className="card-header">
+                          <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
+                            {lead.fullName?.[0] || "N"}
+                          </Avatar>
+                          <Box>
+                            <Typography className="client-name">
+                              {lead.fullName || "Unknown Name"}
+                            </Typography>
+                            <Typography className="client-subtext">
+                              {lead.phoneNumber}
+                            </Typography>
                           </Box>
-                        </TableCell>
-                        <TableCell>{lead.address || "N/A"}</TableCell>
-                        <TableCell>{lead.city || "N/A"}</TableCell>
-                        <TableCell>{lead.workRequired || "N/A"}</TableCell>
-                        <TableCell>{lead.details || "N/A"}</TableCell>
-                        <TableCell>{lead.budget || "N/A"}</TableCell>
-                      </TableRow>
+                        </Box>
+                        <Box className="card-content">
+                          <Typography variant="body2">
+                            <strong>Address:</strong> {lead.address || "N/A"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>City:</strong> {lead.city || "N/A"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Work Required:</strong> {lead.workRequired || "N/A"}
+                          </Typography>
+                          <Typography variant="body2">
+                            <strong>Budget:</strong> {lead.budget || "N/A"}
+                          </Typography>
+                        </Box>
+                      </Box>
                     ))}
-                  </TableBody>
-                </Table>
-              </TableContainer>
-            )}
-          </Box>
-        ))
+                  </Box>
+                  {hasMoreLeads && (
+                    <Box className="load-more-container">
+                      {!isExpanded ? (
+                        <Button 
+                          variant="outlined" 
+                          className="load-more-button"
+                          onClick={() => toggleStageExpansion(stage)}
+                        >
+                          Show More ({stageLeads.length - initialLeadsPerStage})
+                        </Button>
+                      ) : hasMoreToLoad ? (
+                        <Button 
+                          variant="outlined" 
+                          className="load-more-button"
+                          onClick={() => loadMoreLeads(stage, stageLeads.length)}
+                        >
+                          Load 5 More ({stageLeads.length - currentVisibleCount} remaining)
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outlined" 
+                          className="load-more-button"
+                          onClick={() => resetVisibleLeadsCount(stage)}
+                        >
+                          Show Less
+                        </Button>
+                      )}
+                    </Box>
+                  )}
+                </>
+              ) : (
+                <>
+                  <TableContainer component={Paper} className="leads-table-container">
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          <TableCell className="table-header">Customer Name</TableCell>
+                          <TableCell className="table-header">Address</TableCell>
+                          <TableCell className="table-header">City</TableCell>
+                          <TableCell className="table-header">Work Required</TableCell>
+                          <TableCell className="table-header">Details</TableCell>
+                          <TableCell className="table-header">Budget</TableCell>
+                          <TableCell className="table-header">Source</TableCell>
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {displayLeads.map((lead, i) => (
+                          <TableRow
+                            key={i}
+                            onClick={() => handleRowClick(lead)}
+                            hover
+                            style={{ cursor: "pointer" }}
+                          >
+                            <TableCell>
+                              <Box className="client-cell">
+                                <Avatar sx={{ bgcolor: "#2A9D8F" }} className="lead-avatar">
+                                  {lead.fullName?.[0] || "N"}
+                                </Avatar>
+                                <Box>
+                                  <Typography className="client-name">
+                                    {lead.fullName || "Unknown Name"}
+                                  </Typography>
+                                  <Typography className="client-subtext">
+                                    {lead.phoneNumber}
+                                  </Typography>
+                                </Box>
+                              </Box>
+                            </TableCell>
+                            <TableCell>{lead.address || "N/A"}</TableCell>
+                            <TableCell>{lead.city || "N/A"}</TableCell>
+                            <TableCell>{lead.workRequired || "N/A"}</TableCell>
+                            <TableCell>{lead.details || "N/A"}</TableCell>
+                            <TableCell>{lead.budget || "N/A"}</TableCell>
+                            <TableCell>
+                              {lead.googleFormSubmission ? (
+                                <Tooltip title="From Google Form">
+                                  <Chip 
+                                    size="small" 
+                                    label="Google Form" 
+                                    color="primary" 
+                                    variant="outlined" 
+                                    sx={{ fontSize: '0.7rem' }} 
+                                  />
+                                </Tooltip>
+                              ) : (
+                                <Typography variant="body2" color="textSecondary">
+                                  Manual Entry
+                                </Typography>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableContainer>
+                  {hasMoreLeads && (
+                    <Box className="load-more-container">
+                      {!isExpanded ? (
+                        <Button 
+                          variant="outlined" 
+                          className="load-more-button"
+                          onClick={() => toggleStageExpansion(stage)}
+                        >
+                          Show More ({stageLeads.length - initialLeadsPerStage})
+                        </Button>
+                      ) : hasMoreToLoad ? (
+                        <Button 
+                          variant="outlined" 
+                          className="load-more-button"
+                          onClick={() => loadMoreLeads(stage, stageLeads.length)}
+                        >
+                          Load 5 More ({stageLeads.length - currentVisibleCount} remaining)
+                        </Button>
+                      ) : (
+                        <Button 
+                          variant="outlined" 
+                          className="load-more-button"
+                          onClick={() => resetVisibleLeadsCount(stage)}
+                        >
+                          Show Less
+                        </Button>
+                      )}
+                    </Box>
+                  )}
+                </>
+              )}
+            </Box>
+          );
+        })
       )}
     </>
   );
@@ -682,10 +1078,12 @@ const MyLeads = () => {
   return (
     <Box className="myLeads-container">
       <Typography variant="h5" className="section-title">
-        Zain's Leads
+        {userRole === "admin" ? "All Leads" : `${auth.currentUser?.displayName || 'Builder'}'s Leads`}
       </Typography>
       <Typography variant="subtitle2" className="section-subtitle">
-        View all of your leads.
+        {userRole === "admin" 
+          ? `View and manage all leads in the system. Data source: ${dataSource === "firebase" ? "Firebase" : "Google Sheets"}.` 
+          : "View all of your leads."}
       </Typography>
 
       {/* Stage Filter Tabs – horizontal scroll */}
@@ -731,6 +1129,19 @@ const MyLeads = () => {
           className="search-field"
         />
         <div className="action-buttons">
+          {userRole === "admin" && (
+            <Tooltip title="Sync new Google Form submissions">
+              <Button 
+                variant="outlined" 
+                startIcon={<Sync />} 
+                onClick={handleSyncGoogleForms}
+                disabled={syncingForms}
+                sx={{ mr: 1 }}
+              >
+                {syncingForms ? "Syncing..." : "Sync Forms"}
+              </Button>
+            </Tooltip>
+          )}
           <Button 
             variant="outlined" 
             startIcon={<SortByAlpha />} 
@@ -809,6 +1220,15 @@ const MyLeads = () => {
           <Typography variant="h6" className="filter-title">
             Filters
           </Typography>
+
+          {userRole === "admin" && (
+            <Box className="admin-note" sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(42, 157, 143, 0.1)', borderRadius: 1 }}>
+              <Typography variant="body2" sx={{ color: '#2A9D8F', fontWeight: 500 }}>
+                Admin View: You are seeing leads from all builders in the system. 
+                Data source: {dataSource === "firebase" ? "Firebase" : "Google Sheets"}.
+              </Typography>
+            </Box>
+          )}
 
           {/* Date Added Filter */}
           <FormControl fullWidth margin="normal">
@@ -890,6 +1310,14 @@ const MyLeads = () => {
           </Box>
         </Box>
       </Drawer>
+
+      {/* Snackbar for sync messages */}
+      <Snackbar
+        open={snackbarOpen}
+        autoHideDuration={6000}
+        onClose={handleCloseSnackbar}
+        message={syncMessage}
+      />
     </Box>
   );
 };

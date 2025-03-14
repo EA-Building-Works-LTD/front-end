@@ -57,7 +57,9 @@ import PoundSterlingIcon from '../Icons/PoundSterlingIcon';
 import { formatTimestamp } from "../../utils/dateUtils";
 import { formatWithCommas } from "../../utils/dateUtils";
 import { v4 as uuidv4 } from "uuid";
-import useLocalStorageState from "../../hooks/useLocalStorageState";
+import useFirebaseState from "../../hooks/useFirebaseState";
+import { auth } from "../../firebase/config";
+import { updateLead, addLeadActivity, addLeadAppointment, addLeadProposal } from "../../firebase/leads";
 
 // Components (same functionality as desktop)
 import NotesSection from './NotesSection';
@@ -80,8 +82,13 @@ export default function LeadDetailMobile() {
   const theme = useTheme();
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
 
-  // Ephemeral state for lead data
-  const [allLeadData, setAllLeadData] = useLocalStorageState("myLeadData", {});
+  // Lead data from Firebase
+  const [allLeadData, setAllLeadData, leadDataLoading] = useFirebaseState(
+    "leadData",
+    auth.currentUser?.uid || "anonymous",
+    "myLeadData",
+    {}
+  );
 
   // Local UI state
   const [activeTab, setActiveTab] = useState(0);

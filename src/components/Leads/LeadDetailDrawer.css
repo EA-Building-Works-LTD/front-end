@@ -1,3 +1,70 @@
+/* 
+  LeadDetailDrawer.css
+  This file contains supplementary styles for the LeadDetailDrawer component.
+  Most styling is now handled by MUI's sx prop directly in the component.
+*/
+
+/* Custom scrollbar for better UX */
+.MuiDrawer-paper {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(0, 0, 0, 0.2) transparent;
+}
+
+.MuiDrawer-paper::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.MuiDrawer-paper::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.MuiDrawer-paper::-webkit-scrollbar-thumb {
+  background-color: rgba(0, 0, 0, 0.2);
+  border-radius: 4px;
+}
+
+.MuiDrawer-paper::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(0, 0, 0, 0.3);
+}
+
+/* Animation for drawer opening */
+.MuiDrawer-root .MuiDrawer-paper {
+  transition: transform 0.3s ease-out !important;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 600px) {
+  .MuiTab-root {
+    min-width: auto !important;
+    padding: 12px 8px !important;
+  }
+  
+  .MuiTab-root .MuiSvgIcon-root {
+    margin-bottom: 0 !important;
+    margin-right: 8px !important;
+  }
+}
+
+/* Print styles for proposals and appointments */
+@media print {
+  .MuiDrawer-paper {
+    position: relative !important;
+    transform: none !important;
+  }
+  
+  .drawer-topbar,
+  .MuiTabs-root,
+  button {
+    display: none !important;
+  }
+  
+  .drawer-content {
+    height: auto !important;
+    overflow: visible !important;
+  }
+}
+
 /* Overall drawer, 2 columns: left + right (desktop) */
 .drawer-content {
   display: flex;

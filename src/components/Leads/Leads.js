@@ -185,17 +185,68 @@ const Leads = () => {
     }
 
     try {
-      const token = localStorage.getItem("token");
-      await axios.put(
-        `${process.env.REACT_APP_API_URL}/api/google-leads/${selectedLead._id}`,
-        { builder: editBuilder, status: editStatus },
-        {
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
+      // First update in Google Sheets API if available
+      try {
+        const token = localStorage.getItem("token");
+        await axios.put(
+          `${process.env.REACT_APP_API_URL}/api/google-leads/${selectedLead._id}`,
+          { builder: editBuilder, status: editStatus },
+          {
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${token}`,
+            },
+          }
+        );
+        console.log("Updated lead in Google Sheets API");
+      } catch (apiError) {
+        console.warn("Could not update in Google Sheets API:", apiError);
+      }
+
+      // Then update in Firebase
+      try {
+        // Import the assignLeadToBuilder function
+        const { assignLeadToBuilder } = require("../../firebase/leads");
+        
+        // Find the builder's ID based on their name
+        // This is a simplified approach - in a real app, you'd have a proper user lookup
+        const { db } = require("../../firebase/config");
+        const { collection, query, where, getDocs } = require("firebase/firestore");
+        
+        const usersCollection = collection(db, "users");
+        const builderQuery = query(
+          usersCollection,
+          where("displayName", "==", editBuilder)
+        );
+        
+        const builderSnapshot = await getDocs(builderQuery);
+        let builderId = null;
+        
+        if (!builderSnapshot.empty) {
+          builderId = builderSnapshot.docs[0].id;
+        } else {
+          // If builder not found by displayName, try email
+          const emailQuery = query(
+            usersCollection,
+            where("email", "==", editBuilder)
+          );
+          
+          const emailSnapshot = await getDocs(emailQuery);
+          
+          if (!emailSnapshot.empty) {
+            builderId = emailSnapshot.docs[0].id;
+          } else {
+            console.warn(`Builder "${editBuilder}" not found in Firebase`);
+          }
         }
-      );
+        
+        if (builderId) {
+          await assignLeadToBuilder(selectedLead._id, builderId, editBuilder);
+          console.log("Updated lead in Firebase");
+        }
+      } catch (firebaseError) {
+        console.warn("Could not update in Firebase:", firebaseError);
+      }
 
       // Update local state so we see the change immediately
       setLeads((prevLeads) =>

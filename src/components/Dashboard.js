@@ -30,6 +30,7 @@ import {
 // import { Link } from "react-router-dom";
 import jsPDF from "jspdf";
 import "./Dashboard.css";
+import { useUserRole } from "./Auth/UserRoleContext";
 
 // Utility for formatting the date to DD/MM/YYYY
 function formatUKDate(dateObj) {
@@ -41,6 +42,7 @@ function formatUKDate(dateObj) {
 
 export default function Dashboard() {
   // --- State Declarations ---
+  const userRole = useUserRole();
   const [builders, setBuilders] = useState([
     { id: 1, name: "N.Hussain", image: "https://via.placeholder.com/40" },
     { id: 2, name: "Z.Khan", image: "https://via.placeholder.com/40" },
@@ -283,6 +285,10 @@ export default function Dashboard() {
   // --- Render ---
   return (
     <Box className="dashboard-container">
+      <Typography variant="h4" className="dashboard-title">
+        Dashboard
+      </Typography>
+      
       {/* Row 1: Balances */}
       <Grid container spacing={2} className="balances-row">
         <Grid item xs={12} md={6}>
