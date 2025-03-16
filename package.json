@@ -56,5 +56,10 @@
       "last 1 safari version"
     ]
   },
-  "proxy": "https://slow-vbulletin-holly-ranks.trycloudflare.com"
+  "proxy": "https://slow-vbulletin-holly-ranks.trycloudflare.com",
+  "devDependencies": {
+    "@testing-library/jest-dom": "^6.6.3",
+    "@testing-library/react": "^16.2.0",
+    "jest": "^27.5.1"
+  }
 }

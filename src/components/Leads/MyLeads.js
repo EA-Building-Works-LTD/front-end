@@ -72,6 +72,9 @@ const MyLeads = () => {
   // Global search term
   const [searchTerm, setSearchTerm] = useState("");
 
+  // Total leads count from Google Sheets
+  const [totalGoogleSheetLeads, setTotalGoogleSheetLeads] = useState(0);
+
   // Stage filter tabs – "All Customers" plus the six stage statuses
   const stageTabs = [
     "All Customers",
@@ -140,7 +143,7 @@ const MyLeads = () => {
   const navigate = useNavigate();
 
   // Retrieve lead data from Firebase
-  const [allLeadData, setAllLeadData, leadDataLoading] = useFirebaseState(
+  const [allLeadData] = useFirebaseState(
     "leadData",
     auth.currentUser?.uid || "anonymous",
     "myLeadData",
@@ -151,6 +154,16 @@ const MyLeads = () => {
   const [syncingForms, setSyncingForms] = useState(false);
   const [syncMessage, setSyncMessage] = useState("");
   const [snackbarOpen, setSnackbarOpen] = useState(false);
+
+  // Utility function to truncate text to a specific number of words
+  const truncateText = (text, maxWords = 20) => {
+    if (!text) return "N/A";
+    
+    const words = text.split(/\s+/);
+    if (words.length <= maxWords) return text;
+    
+    return words.slice(0, maxWords).join(" ") + "...";
+  };
 
   // Function to fetch leads
   const fetchLeads = async () => {
@@ -167,18 +180,11 @@ const MyLeads = () => {
       let fetchedLeads = [];
       let source = "firebase";
       
-      // Log current user info for debugging
-      console.log("Current user:", {
-        uid: auth.currentUser.uid,
-        email: auth.currentUser.email,
-        displayName: auth.currentUser.displayName,
-        role: userRole
-      });
       
       // Try to fetch from Firebase first
       try {
         fetchedLeads = await getLeadsByBuilder(auth.currentUser.uid, isAdmin);
-        console.log("Fetched leads from Firebase:", fetchedLeads.length);
+        // console.log("Fetched leads from Firebase:", fetchedLeads.length);
         
         // If we got leads from Firebase, use them
         if (fetchedLeads && fetchedLeads.length > 0) {
@@ -188,7 +194,7 @@ const MyLeads = () => {
           throw new Error("No leads found in Firebase");
         }
       } catch (firebaseError) {
-        console.error("Error fetching leads from Firebase:", firebaseError);
+        // console.error("Error fetching leads from Firebase:", firebaseError);
         
         // Fallback to Google Sheets
         try {
@@ -204,22 +210,18 @@ const MyLeads = () => {
           
           fetchedLeads = response.data;
           source = "googleSheets";
-          console.log("Fetched leads from Google Sheets:", fetchedLeads.length);
-          
-          // Log all builder names in Google Sheets for debugging
-          const builderNames = [...new Set(fetchedLeads.map(lead => lead.builder))];
-          console.log("Builder names in Google Sheets:", builderNames);
+          // console.log("Fetched leads from Google Sheets:", fetchedLeads.length);
           
           // If not admin, filter leads by builder name for non-admin users
           if (!isAdmin) {
             // Get the builder's display name and email
             const displayName = auth.currentUser.displayName || "";
             const email = auth.currentUser.email || "";
-            console.log("Current builder:", { displayName, email });
+            // console.log("Current builder:", { displayName, email });
             
             // Check if the user has a display name set
             if (displayName) {
-              console.log(`Looking for leads with builder name matching displayName: "${displayName}"`);
+              // console.log(`Looking for leads with builder name matching displayName: "${displayName}"`);
               
               // Filter leads where the builder field matches the display name (case-insensitive)
               fetchedLeads = fetchedLeads.filter(lead => {
@@ -233,26 +235,26 @@ const MyLeads = () => {
                                displayNameLower.includes(builderLower);
                 
                 if (isMatch) {
-                  console.log(`Match found - Lead builder: "${lead.builder}" matches with displayName: "${displayName}"`);
+                  // console.log(`Match found - Lead builder: "${lead.builder}" matches with displayName: "${displayName}"`);
                 }
                 
                 return isMatch;
               });
               
-              console.log(`Found ${fetchedLeads.length} leads matching displayName: "${displayName}"`);
+                // console.log(`Found ${fetchedLeads.length} leads matching displayName: "${displayName}"`);
             }
             // Special case for Zain (email: gcconstruction@live.co.uk)
             else if (email.toLowerCase() === "gcconstruction@live.co.uk") {
-              console.log("Special case for Zain - looking for leads with 'Zain' in builder field");
+              // console.log("Special case for Zain - looking for leads with 'Zain' in builder field");
               fetchedLeads = fetchedLeads.filter(lead => {
                 if (!lead.builder) return false;
                 return lead.builder.toLowerCase().includes("zain");
               });
-              console.log("Found Zain's leads:", fetchedLeads.length);
+              // console.log("Found Zain's leads:", fetchedLeads.length);
             } 
             // Fallback to email-based matching if no display name and not Zain
             else {
-              console.log("No displayName set - falling back to email-based matching");
+              // console.log("No displayName set - falling back to email-based matching");
               
               // Create a set of possible builder identifiers to match against
               const possibleMatches = new Set();
@@ -270,7 +272,7 @@ const MyLeads = () => {
                 });
               }
               
-              console.log("Possible builder name matches from email:", [...possibleMatches]);
+              // console.log("Possible builder name matches from email:", [...possibleMatches]);
               
               // Filter leads where the builder field matches any of the possible identifiers
               fetchedLeads = fetchedLeads.filter(lead => {
@@ -284,17 +286,17 @@ const MyLeads = () => {
                 );
                 
                 if (isMatch) {
-                  console.log(`Match found - Lead builder: "${lead.builder}" matches with "${[...possibleMatches].find(m => builderLower.includes(m) || m.includes(builderLower))}"`);
+                  // console.log(`Match found - Lead builder: "${lead.builder}" matches with "${[...possibleMatches].find(m => builderLower.includes(m) || m.includes(builderLower))}"`);
                 }
                 
                 return isMatch;
               });
               
-              console.log("Filtered leads count:", fetchedLeads.length);
+              // console.log("Filtered leads count:", fetchedLeads.length);
             }
           }
         } catch (apiError) {
-          console.error("Error fetching leads from API:", apiError);
+          // console.error("Error fetching leads from API:", apiError);
           setError("Failed to fetch leads. Please try again later.");
           setLoading(false);
           return;
@@ -311,32 +313,74 @@ const MyLeads = () => {
       
       setLeads(sortedLeads);
     } catch (err) {
-      console.error("Error fetching leads:", err);
+      //console.error("Error fetching leads:", err);
       setError("Failed to fetch leads. Please try again later.");
     } finally {
       setLoading(false);
     }
   };
 
+  // Fetch total leads count from Google Sheets
+  const fetchTotalLeadsCount = async () => {
+    try {
+      //console.log("Fetching total leads count from Google Sheets...");
+      const token = localStorage.getItem("token");
+      if (!token) {
+        //console.error("No token found for fetching total leads count");
+        return;
+      }
+      
+      const response = await axios.get(
+        `${process.env.REACT_APP_API_URL}/api/google-leads`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      
+      if (response.data && Array.isArray(response.data)) {
+        const totalCount = response.data.length;
+        //console.log(`Total leads in Google Sheet: ${totalCount}`);
+        setTotalGoogleSheetLeads(totalCount);
+      } else {
+        //console.error("Invalid response data format:", response.data);
+      }
+    } catch (error) {
+      //console.error("Error fetching total leads count:", error);
+    }
+  };
+
   // Fetch leads on mount and when userRole changes
   useEffect(() => {
     fetchLeads();
+    
+    // Always fetch the total leads count for admin users
+    const isAdmin = userRole?.isAdmin || userRole === "admin";
+    //console.log("Current user role:", userRole, "Is admin:", isAdmin);
+    
+    if (isAdmin) {
+      //console.log("User is admin, fetching total leads count");
+      fetchTotalLeadsCount();
+    }
   }, [userRole]);
 
-  // Helper function to check if a lead is within the specified time range
-  const isLeadWithinTimeRange = (lead, days) => {
-    const leadDate = new Date(lead.timestamp);
-    const now = new Date();
-    const timeAgo = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
-    return leadDate >= timeAgo;
-  };
+  // Add a separate useEffect to ensure totalGoogleSheetLeads is set correctly
+  useEffect(() => {
+    // Check if we're an admin user but don't have the total count yet
+    const isAdmin = userRole?.isAdmin || userRole === "admin";
+    if (isAdmin && totalGoogleSheetLeads === 0) {
+      // console.log("Admin user detected but total count is 0, fetching total leads count");
+      fetchTotalLeadsCount();
+    }
+  }, [totalGoogleSheetLeads, userRole]);
 
   // Merge each API lead with Firebase data so that each lead gets a "stage" property.
   // Note: This array contains ALL leads regardless of stage or age.
   // The filtering by stage happens later when the user clicks on a stage tab.
   const combinedLeads = leads.map((lead) => {
     // Check if lead is within the last 14 days
-    const isWithin14Days = isLeadWithinTimeRange(lead, 14);
+    // const isWithin14Days = isLeadWithinTimeRange(lead, 14);
     
     // Get the stored stage from Firebase (if any)
     const storedStage = allLeadData[lead._id]?.stage;
@@ -647,7 +691,7 @@ const MyLeads = () => {
   // Function to sync Google Form submissions
   const handleSyncGoogleForms = async () => {
     if (userRole !== "admin") {
-      console.log("Only admins can sync Google Forms");
+      // console.log("Only admins can sync Google Forms");    
       return;
     }
     
@@ -677,7 +721,7 @@ const MyLeads = () => {
       // Refresh leads to show newly synced data
       fetchLeads();
     } catch (error) {
-      console.error("Error syncing Google Form submissions:", error);
+      // console.error("Error syncing Google Form submissions:", error);
       setSyncMessage("Error syncing Google Form submissions: " + error.message);
       setSnackbarOpen(true);
     } finally {
@@ -731,7 +775,7 @@ const MyLeads = () => {
               <TableCell>{lead.address || "N/A"}</TableCell>
               <TableCell>{lead.city || "N/A"}</TableCell>
               <TableCell>{lead.workRequired || "N/A"}</TableCell>
-              <TableCell>{lead.details || "N/A"}</TableCell>
+              <TableCell>{truncateText(lead.details)}</TableCell>
               <TableCell>{lead.budget || "N/A"}</TableCell>
               <TableCell>
                 <Chip 
@@ -821,6 +865,11 @@ const MyLeads = () => {
             <Typography variant="body2">
               <strong>Work:</strong> {lead.workRequired || "N/A"}
             </Typography>
+            {lead.details && (
+              <Typography variant="body2">
+                <strong>Details:</strong> {truncateText(lead.details, 15)}
+              </Typography>
+            )}
           </Box>
           <Box className="card-footer">
             <Chip 
@@ -923,6 +972,11 @@ const MyLeads = () => {
                           <Typography variant="body2">
                             <strong>Budget:</strong> {lead.budget || "N/A"}
                           </Typography>
+                          {lead.details && (
+                            <Typography variant="body2">
+                              <strong>Details:</strong> {truncateText(lead.details, 15)}
+                            </Typography>
+                          )}
                         </Box>
                       </Box>
                     ))}
@@ -998,7 +1052,7 @@ const MyLeads = () => {
                             <TableCell>{lead.address || "N/A"}</TableCell>
                             <TableCell>{lead.city || "N/A"}</TableCell>
                             <TableCell>{lead.workRequired || "N/A"}</TableCell>
-                            <TableCell>{lead.details || "N/A"}</TableCell>
+                            <TableCell>{truncateText(lead.details)}</TableCell>
                             <TableCell>{lead.budget || "N/A"}</TableCell>
                             <TableCell>
                               {lead.googleFormSubmission ? (
@@ -1095,24 +1149,38 @@ const MyLeads = () => {
           flexWrap: "nowrap",
         }}
       >
-        {stageTabs.map((stage) => (
-          <div
-            key={stage}
-            className={`tab-item ${selectedStage === stage ? "active" : ""}`}
-            onClick={() => handleStageTabClick(stage)}
-            style={{ flexShrink: 0 }}
-          >
-            {stage !== "All Customers" && (
-              <span className={`stage-indicator ${getStageIndicatorClass(stage)}`}></span>
-            )}
-            {stage}{" "}
-            <span>
-              {stage === "All Customers"
-                ? combinedLeads.length
-                : combinedLeads.filter((lead) => lead.stage === stage).length}
-            </span>
-          </div>
-        ))}
+        {stageTabs.map((stage) => {
+          // Determine the count to display
+          let count;
+          const isAdmin = userRole?.isAdmin || userRole === "admin";
+          
+          if (stage === "All Customers") {
+            if (isAdmin && totalGoogleSheetLeads > 0) {
+              count = totalGoogleSheetLeads;
+            } else {
+              count = combinedLeads.length;
+            }
+          } else {
+            count = combinedLeads.filter((lead) => lead.stage === stage).length;
+          }
+          
+          return (
+            <div
+              key={stage}
+              className={`tab-item ${selectedStage === stage ? "active" : ""}`}
+              onClick={() => handleStageTabClick(stage)}
+              style={{ flexShrink: 0 }}
+            >
+              {stage !== "All Customers" && (
+                <span className={`stage-indicator ${getStageIndicatorClass(stage)}`}></span>
+              )}
+              {stage}{" "}
+              <span>
+                {count}
+              </span>
+            </div>
+          );
+        })}
       </Box>
 
       {/* Search & Filter Row */}

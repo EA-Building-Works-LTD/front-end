@@ -59,7 +59,7 @@ import { formatWithCommas } from "../../utils/dateUtils";
 import { v4 as uuidv4 } from "uuid";
 import useFirebaseState from "../../hooks/useFirebaseState";
 import { auth } from "../../firebase/config";
-import { updateLead, addLeadActivity, addLeadAppointment, addLeadProposal } from "../../firebase/leads";
+import { updateLead, getLeadById } from "../../firebase/leads";
 
 // Components (same functionality as desktop)
 import NotesSection from './NotesSection';
@@ -73,7 +73,15 @@ import "./LeadDetailMobile.css";
 
 // Helper: Create an activity log entry
 function createActivity(title, subtext) {
-  return { id: uuidv4(), timestamp: Date.now(), title, subtext };
+  // Ensure we always have a valid timestamp
+  const timestamp = Date.now();
+  
+  return { 
+    id: uuidv4(), 
+    timestamp: timestamp, 
+    title, 
+    subtext 
+  };
 }
 
 export default function LeadDetailMobile() {
@@ -83,7 +91,7 @@ export default function LeadDetailMobile() {
   const isDesktop = useMediaQuery(theme.breakpoints.up("lg"));
 
   // Lead data from Firebase
-  const [allLeadData, setAllLeadData, leadDataLoading] = useFirebaseState(
+  const [allLeadData, setAllLeadData] = useFirebaseState(
     "leadData",
     auth.currentUser?.uid || "anonymous",
     "myLeadData",
@@ -146,45 +154,130 @@ export default function LeadDetailMobile() {
   // Initialize ephemeral data if not present
   useEffect(() => {
     if (hasLead && lead._id) {
-      // Log the lead data and ID for debugging
-      // console.log("Initializing lead data:", lead);
-      // console.log("Lead ID:", lead._id);
-      // console.log("allLeadData keys:", Object.keys(allLeadData));
-      
       // Check if we already have data for this lead
       if (!allLeadData[lead._id]) {
-        // Create a new lead object with all the data from the router state
-      const initialLeadObj = {
-          // Include any fields that might already be in the lead object
-          ...lead,
-          // Then set the required fields with fallbacks
-          contractAmount: lead.contractAmount || "",
-          profit: lead.profit || "",
-        stage: lead.stage || "New Lead",
-        customerName: lead.fullName || "",
-          address: lead.address || "",
-          builderName: lead.builder || "",
-          email: lead.email || "",
-          phoneNumber: lead.phoneNumber || "",
-          city: lead.city || "",
-          workRequired: lead.workRequired || "No Enquiry",
-          details: lead.details || "",
-          appointmentDate: lead.appointmentDate || null,
-          notes: lead.notes || [],
-          proposals: lead.proposals || [],
-          media: lead.media || { before: [], after: [], documents: [] },
-          activities: lead.activities || [
-          createActivity(
-            `Stage: New Lead added for ${lead.builder || "unknown"}`,
-              `Lead has been submitted on ${formatTimestamp(lead.timestamp || Date.now())}`
-          ),
-        ],
-      };
-        
-        // console.log("Creating new lead object:", initialLeadObj);
-      setAllLeadData((prev) => ({ ...prev, [lead._id]: initialLeadObj }));
-      } else {
-        // console.log("Lead already exists in allLeadData");
+        // First check if the lead exists in Firebase
+        getLeadById(lead._id)
+          .then(firebaseLead => {
+            if (firebaseLead) {
+              // If the lead exists in Firebase, use that data
+              // console.log("Found lead in Firebase, using that data");
+              setAllLeadData(prev => ({
+                ...prev,
+                [lead._id]: {
+                  ...firebaseLead,
+                  // Ensure media object exists
+                  media: firebaseLead.media || { before: [], after: [], documents: [] }
+                }
+              }));
+            } else {
+              // If the lead doesn't exist in Firebase, create a new one
+              // console.log("Lead not found in Firebase, creating new lead");
+              const initialLeadObj = {
+                // Include any fields that might already be in the lead object
+                ...lead,
+                // Then set the required fields with fallbacks
+                contractAmount: lead.contractAmount || "",
+                profit: lead.profit || "",
+                stage: lead.stage || "New Lead",
+                customerName: lead.fullName || "",
+                address: lead.address || "",
+                builderName: lead.builder || "",
+                // Use startDate as email if it's a valid email, otherwise use email field
+                email: (lead.startDate && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.startDate)) 
+                  ? lead.startDate 
+                  : (lead.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email)) 
+                    ? lead.email 
+                    : "",
+                phoneNumber: lead.phoneNumber || "",
+                city: lead.city || "",
+                workRequired: lead.workRequired || "No Enquiry",
+                details: lead.details || "",
+                appointmentDate: lead.appointmentDate || null,
+                notes: lead.notes || [],
+                proposals: lead.proposals || [],
+                media: lead.media || { before: [], after: [], documents: [] },
+                // Ensure timestamp is valid - handle Firestore timestamp objects
+                timestamp: lead.timestamp && typeof lead.timestamp === 'object' && lead.timestamp.seconds
+                  ? new Date(lead.timestamp.seconds * 1000).getTime()
+                  : lead.timestamp && !isNaN(new Date(lead.timestamp).getTime()) 
+                    ? lead.timestamp 
+                    : Date.now(),
+                activities: lead.activities || [
+                  createActivity(
+                    `Stage: New Lead added for ${lead.builder || "unknown"}`,
+                    `Lead has been submitted on ${formatTimestamp(
+                      lead.timestamp && typeof lead.timestamp === 'object' && lead.timestamp.seconds
+                        ? new Date(lead.timestamp.seconds * 1000)
+                        : lead.timestamp && !isNaN(new Date(lead.timestamp).getTime())
+                          ? lead.timestamp
+                          : Date.now()
+                    )}`
+                  ),
+                ],
+              };
+              
+              setAllLeadData(prev => ({ ...prev, [lead._id]: initialLeadObj }));
+              
+              // Also ensure the data is saved to Firebase to avoid data loss
+              updateLead(lead._id, initialLeadObj).catch(err => {
+                // console.error("Error saving initial lead data to Firebase:", err);
+              });
+            }
+          })
+          .catch(err => {
+            // console.error("Error checking if lead exists in Firebase:", err);
+            
+            // Fallback to creating a new lead if there's an error
+            const initialLeadObj = {
+              ...lead,
+              contractAmount: lead.contractAmount || "",
+              profit: lead.profit || "",
+              stage: lead.stage || "New Lead",
+              customerName: lead.fullName || "",
+              address: lead.address || "",
+              builderName: lead.builder || "",
+              // Use startDate as email if it's a valid email, otherwise use email field
+              email: (lead.startDate && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.startDate)) 
+                ? lead.startDate 
+                : (lead.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email)) 
+                  ? lead.email 
+                  : "",
+              phoneNumber: lead.phoneNumber || "",
+              city: lead.city || "",
+              workRequired: lead.workRequired || "No Enquiry",
+              details: lead.details || "",
+              appointmentDate: lead.appointmentDate || null,
+              notes: lead.notes || [],
+              proposals: lead.proposals || [],
+              media: lead.media || { before: [], after: [], documents: [] },
+              // Ensure timestamp is valid - handle Firestore timestamp objects
+              timestamp: lead.timestamp && typeof lead.timestamp === 'object' && lead.timestamp.seconds
+                ? new Date(lead.timestamp.seconds * 1000).getTime()
+                : lead.timestamp && !isNaN(new Date(lead.timestamp).getTime()) 
+                  ? lead.timestamp 
+                  : Date.now(),
+              activities: lead.activities || [
+                createActivity(
+                  `Stage: New Lead added for ${lead.builder || "unknown"}`,
+                  `Lead has been submitted on ${formatTimestamp(
+                    lead.timestamp && typeof lead.timestamp === 'object' && lead.timestamp.seconds
+                      ? new Date(lead.timestamp.seconds * 1000)
+                      : lead.timestamp && !isNaN(new Date(lead.timestamp).getTime())
+                        ? lead.timestamp
+                        : Date.now()
+                  )}`
+                ),
+              ],
+            };
+            
+            setAllLeadData(prev => ({ ...prev, [lead._id]: initialLeadObj }));
+            
+            // Also ensure the data is saved to Firebase to avoid data loss
+            updateLead(lead._id, initialLeadObj).catch(err => {
+              // console.error("Error saving initial lead data to Firebase:", err);
+            });
+          });
       }
     }
   }, [hasLead, lead, allLeadData, setAllLeadData]);
@@ -238,6 +331,14 @@ export default function LeadDetailMobile() {
       }
     }
   }, [mediaType]);
+
+  // Add debugging for lead data
+  useEffect(() => {
+    if (hasLead && lead._id && allLeadData[lead._id]) {
+      // console.log("Lead data updated:", allLeadData[lead._id]);
+      // console.log("Notes:", allLeadData[lead._id].notes || []);
+    }
+  }, [hasLead, lead, allLeadData]);
 
   // -------------------- UPDATE HELPERS (same as desktop) --------------------
   function updateLeadData(changes) {
@@ -300,9 +401,21 @@ export default function LeadDetailMobile() {
           ];
         }
       }
+      
+      // Create the updated lead object with all changes
+      const updatedLead = { ...oldData, ...changes, activities: updatedActivities };
+      
+      // Persist to Firebase directly
+      updateLead(lead._id, {
+        ...changes,
+        activities: updatedActivities
+      }).catch(err => {
+        // console.error("Error saving changes to Firebase:", err);
+      });
+      
       const updatedData = {
         ...prev,
-        [lead._id]: { ...oldData, ...changes, activities: updatedActivities },
+        [lead._id]: updatedLead,
       };
       // console.log("Updated lead data:", updatedData[lead._id]);
       return updatedData;
@@ -322,9 +435,27 @@ export default function LeadDetailMobile() {
           `Proposal #${proposal.proposalNumber} was created.`
         ),
       ];
+      
+      const updatedProposals = [...oldProposals, proposal];
+      
+      // Create the updated lead object
+      const updatedLead = { 
+        ...oldData, 
+        proposals: updatedProposals, 
+        activities: newActivities 
+      };
+      
+      // Persist to Firebase directly
+      updateLead(lead._id, {
+        proposals: updatedProposals,
+        activities: newActivities
+      }).catch(err => {
+        // console.error("Error saving proposal to Firebase:", err);
+      });
+      
       return {
         ...prev,
-        [lead._id]: { ...oldData, proposals: [...oldProposals, proposal], activities: newActivities },
+        [lead._id]: updatedLead,
       };
     });
   }
@@ -354,9 +485,25 @@ export default function LeadDetailMobile() {
         }
         return p;
       });
+      
+      // Create the updated lead object
+      const updatedLead = { 
+        ...oldData, 
+        proposals: updatedProposals, 
+        activities: oldActivities 
+      };
+      
+      // Persist to Firebase directly
+      updateLead(lead._id, {
+        proposals: updatedProposals,
+        activities: oldActivities
+      }).catch(err => {
+        // console.error("Error saving proposal status to Firebase:", err);
+      });
+      
       return {
         ...prev,
-        [lead._id]: { ...oldData, proposals: updatedProposals, activities: oldActivities },
+        [lead._id]: updatedLead,
       };
     });
   }
@@ -366,14 +513,41 @@ export default function LeadDetailMobile() {
       const oldData = prev[lead._id] || {};
       const oldNotes = oldData.notes || [];
       const oldActivities = oldData.activities || [];
-      const noteObj = { id: Date.now(), timestamp: Date.now(), content: noteContent };
+      
+      // Create the note object
+      const noteObj = {
+        id: uuidv4(),
+        content: noteContent,
+        timestamp: Date.now(),
+      };
+      
+      // Create an activity for the note
       const noteActivity = createActivity(
         "Note Added",
         `User added a note: "${noteContent}"`
       );
+      
+      const updatedNotes = [...oldNotes, noteObj];
+      // console.log("Updated notes:", updatedNotes);
+      
+      // Create the updated lead object
+      const updatedLead = { 
+        ...oldData, 
+        notes: updatedNotes, 
+        activities: [...oldActivities, noteActivity] 
+      };
+      
+      // Persist to Firebase directly
+      updateLead(lead._id, {
+        notes: updatedNotes,
+        activities: updatedLead.activities
+      }).catch(err => {
+        // console.error("Error saving note to Firebase:", err);
+      });
+      
       return {
         ...prev,
-        [lead._id]: { ...oldData, notes: [...oldNotes, noteObj], activities: [...oldActivities, noteActivity] },
+        [lead._id]: updatedLead,
       };
     });
   }
@@ -397,13 +571,25 @@ export default function LeadDetailMobile() {
         `Proposal #${proposalToDelete?.proposalNumber || 'unknown'} was deleted.`
       );
       
+      // Create the updated lead object
+      const updatedActivities = [...oldActivities, deleteActivity];
+      const updatedLead = { 
+        ...oldData, 
+        proposals: updatedProposals, 
+        activities: updatedActivities
+      };
+      
+      // Persist to Firebase directly
+      updateLead(lead._id, {
+        proposals: updatedProposals,
+        activities: updatedActivities
+      }).catch(err => {
+        // console.error("Error saving proposal deletion to Firebase:", err);
+      });
+      
       return {
         ...prev,
-        [lead._id]: { 
-          ...oldData, 
-          proposals: updatedProposals, 
-          activities: [...oldActivities, deleteActivity] 
-        },
+        [lead._id]: updatedLead,
       };
     });
   }
@@ -424,15 +610,39 @@ export default function LeadDetailMobile() {
   };
 
   // Appointment
-  const handleOpenDateModal = () => setOpenDateModal(true);
-  const handleCloseDateModal = () => setOpenDateModal(false);
+  const handleOpenDateModal = () => {
+    setOpenDateModal(true);
+  };
+  const handleCloseDateModal = () => {
+    setOpenDateModal(false);
+  };
   const handleSaveAppointment = (date) => {
-    updateLeadData({ appointmentDate: date });
+    // Ensure we're working with a valid timestamp
+    try {
+      let validDate;
+      
+      // Handle Firestore timestamp objects (with seconds and nanoseconds)
+      if (date && typeof date === 'object' && 'seconds' in date) {
+        validDate = date.seconds * 1000; // Convert to milliseconds
+      } else if (date && !isNaN(new Date(date).getTime())) {
+        // Regular date object or timestamp
+        validDate = date;
+      } else {
+        throw new Error("Invalid date format");
+      }
+      
+      // console.log("Saving valid appointment date:", validDate);
+      updateLeadData({ appointmentDate: validDate });
+    } catch (error) {
+      //  console.error("Invalid appointment date:", date, error);
+    }
     setOpenDateModal(false);
   };
 
   // Stage
-  const handleOpenStageModal = () => setOpenStageModal(true);
+  const handleOpenStageModal = () => {
+    setOpenStageModal(true);
+  };
   const handleCloseStageModal = () => setOpenStageModal(false);
   const handleSaveStage = (stage) => {
     updateLeadData({ stage });
@@ -529,7 +739,7 @@ export default function LeadDetailMobile() {
             behavior: 'auto' // Use 'auto' instead of 'smooth' for more reliable behavior
           });
         } catch (error) {
-          console.error("Scroll approach 1 failed:", error);
+          // console.error("Scroll approach 1 failed:", error);
         }
         
         // Approach 2: Use scrollIntoView directly
@@ -555,7 +765,7 @@ export default function LeadDetailMobile() {
               document.head.removeChild(style);
             }, 100);
           } catch (error) {
-            console.error("Scroll approach 2 failed:", error);
+            // console.error("Scroll approach 2 failed:", error);
           }
         }, 50);
         
@@ -568,7 +778,7 @@ export default function LeadDetailMobile() {
             
             window.scrollTo(0, targetPosition);
           } catch (error) {
-            console.error("Scroll approach 3 failed:", error);
+            // console.error("Scroll approach 3 failed:", error);
           }
         }, 100);
       }
@@ -582,7 +792,7 @@ export default function LeadDetailMobile() {
 
   const handleImageClick = (image) => {
     if (!image || !image.url) {
-      console.error("Invalid image data", image);
+      // console.error("Invalid image data", image);
       return;
     }
     
@@ -652,7 +862,7 @@ export default function LeadDetailMobile() {
     if (fileInputRef && fileInputRef.current) {
       fileInputRef.current.click();
     } else {
-      console.error("File input reference is not available");
+      // console.error("File input reference is not available");
     }
   };
   
@@ -661,7 +871,7 @@ export default function LeadDetailMobile() {
       const files = event?.target?.files;
       if (!files || files.length === 0) return;
 
-      // Get the current lead data from allLeadData
+      // Get the current lead data from Firebase to ensure we have the latest
       const currentLeadData = allLeadData[lead._id] || {};
       const updatedLead = { ...currentLeadData };
       
@@ -669,6 +879,11 @@ export default function LeadDetailMobile() {
       if (!updatedLead.media) {
         updatedLead.media = { before: [], after: [], documents: [] };
       }
+      
+      // Ensure all media categories exist
+      if (!updatedLead.media.before) updatedLead.media.before = [];
+      if (!updatedLead.media.after) updatedLead.media.after = [];
+      if (!updatedLead.media.documents) updatedLead.media.documents = [];
       
       // Initialize the specific media type array if it doesn't exist
       if (!updatedLead.media[mediaType]) {
@@ -682,7 +897,7 @@ export default function LeadDetailMobile() {
         reader.onload = (e) => {
           try {
             const newMedia = {
-              id: Date.now() + Math.random().toString(36).substr(2, 9), // Generate unique ID
+              id: uuidv4(), // Use UUID for more reliable IDs
               name: file.name,
               type: file.type,
               url: e.target.result,
@@ -709,19 +924,27 @@ export default function LeadDetailMobile() {
               ...prev,
               [lead._id]: updatedLead
             }));
+            
+            // Persist to Firebase directly - use a more specific update to avoid overwriting other data
+            updateLead(lead._id, {
+              media: updatedLead.media,
+              activities: updatedLead.activities
+            }).catch(err => {
+              // console.error("Error saving media to Firebase:", err);
+            });
           } catch (err) {
-            console.error("Error processing file:", err);
+            // console.error("Error processing file:", err);
           }
         };
         
         reader.onerror = (error) => {
-          console.error("Error reading file:", error);
+          // console.error("Error reading file:", error);
         };
         
         try {
           reader.readAsDataURL(file);
         } catch (err) {
-          console.error("Error reading file:", err);
+          // console.error("Error reading file:", err);
         }
       });
       
@@ -730,20 +953,32 @@ export default function LeadDetailMobile() {
         event.target.value = null;
       }
     } catch (err) {
-      console.error("Error in addMediaToLead:", err);
+      // console.error("Error in addMediaToLead:", err);
     }
   };
   
   const deleteMedia = (mediaType, index) => {
     try {
       if (!lead || !lead._id) {
-        console.error("Lead data is not available");
+        // console.error("Lead data is not available");
         return;
       }
       
       // Get the current lead data from allLeadData
       const currentLeadData = allLeadData[lead._id] || {};
       const updatedLead = { ...currentLeadData };
+      
+      // Initialize media object if it doesn't exist
+      if (!updatedLead.media) {
+        updatedLead.media = { before: [], after: [], documents: [] };
+        // console.warn("Media object was missing, initialized empty media object");
+        return; // Nothing to delete if media was just initialized
+      }
+      
+      // Ensure all media categories exist
+      if (!updatedLead.media.before) updatedLead.media.before = [];
+      if (!updatedLead.media.after) updatedLead.media.after = [];
+      if (!updatedLead.media.documents) updatedLead.media.documents = [];
       
       if (updatedLead.media && 
           updatedLead.media[mediaType] && 
@@ -773,45 +1008,50 @@ export default function LeadDetailMobile() {
           [lead._id]: updatedLead
         }));
         
-        // console.log(`Deleted media item at index ${index} from ${mediaType}`);
+        // Persist to Firebase directly - use a more specific update to avoid race conditions
+        updateLead(lead._id, {
+          media: updatedLead.media,
+          activities: updatedLead.activities
+        }).catch(err => {
+          // console.error("Error saving media deletion to Firebase:", err);
+        });
       } else {
-        console.warn("Media item not found at the specified index");
+        // console.warn("Media item not found at the specified index");
       }
     } catch (err) {
-      console.error("Error in deleteMedia:", err);
+      // console.error("Error in deleteMedia:", err);
     }
   };
 
   // Function to handle document download
-  const handleDocumentClick = (document) => {
+  const handleDocumentClick = (docItem) => {
     try {
-      // For PDF files on mobile, we might need to open in a new tab
-      // as some mobile browsers don't handle PDF downloads well
-      if (document.type === 'application/pdf' && /Mobi|Android/i.test(navigator.userAgent)) {
-        // console.log("Opening PDF in new tab (mobile device detected)");
-        window.open(document.url, '_blank');
+      // Check if the URL is a base64 data URL
+      const isDataUrl = docItem.url && docItem.url.startsWith('data:');
+      
+      // Get the filename
+      const fileName = docItem.name || `Document-${docItem.id.substring(0, 8)}`;
+      
+      // For PDF files on mobile, we might need special handling
+      if (docItem.type === 'application/pdf' && /Mobi|Android/i.test(navigator.userAgent) && !isDataUrl) {
+        // For regular URLs (not data URLs), open in new tab
+        window.open(docItem.url, '_blank');
         return;
       }
       
       // Create a download link
       const link = document.createElement('a');
-      link.href = document.url;
-      
-      // Set the download attribute with the original filename
-      const fileName = document.name || `Document-${document.id.substring(0, 8)}`;
+      link.href = docItem.url;
       link.download = fileName;
       
       // For iOS Safari which doesn't support the download attribute well
-      if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream) {
-        // console.log("iOS device detected, using special handling");
-        // For iOS, we'll try to open the document in a new tab
-        // The user can then use the browser's "Share" button to download
-        window.open(document.url, '_blank');
+      if (/iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream && !isDataUrl) {
+        // For regular URLs (not data URLs) on iOS, open in new tab
+        window.open(docItem.url, '_blank');
         return;
       }
       
-      // For other browsers, proceed with download
-      // console.log(`Downloading document: ${fileName}`);
+      // For data URLs or other browsers, proceed with download
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -835,10 +1075,17 @@ export default function LeadDetailMobile() {
         [lead._id]: updatedLead
       }));
       
+      // Persist to Firebase directly
+      updateLead(lead._id, {
+        activities: updatedLead.activities
+      }).catch(err => {
+        // console.error("Error saving document download activity to Firebase:", err);
+      });
+      
     } catch (error) {
-      console.error("Error handling document:", error);
+      // console.error("Error handling document:", error);
       // Fallback to opening in a new tab
-      window.open(document.url, '_blank');
+      window.open(docItem.url, '_blank');
     }
   };
 
@@ -850,34 +1097,55 @@ export default function LeadDetailMobile() {
   
   // Format appointment date in a more readable format
   const formatFullAppointmentDate = (timestamp) => {
-    if (!timestamp) return "";
+    if (!timestamp) return "No date set";
     
-    const date = new Date(timestamp);
-    const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
-    const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-    
-    const dayName = days[date.getDay()];
-    const day = date.getDate();
-    const month = months[date.getMonth()];
-    const year = date.getFullYear();
-    
-    // Add ordinal suffix to day
-    let dayStr = day.toString();
-    if (day > 3 && day < 21) dayStr += 'th';
-    else if (day % 10 === 1) dayStr += 'st';
-    else if (day % 10 === 2) dayStr += 'nd';
-    else if (day % 10 === 3) dayStr += 'rd';
-    else dayStr += 'th';
-    
-    // Format time
-    let hours = date.getHours();
-    const minutes = date.getMinutes();
-    const ampm = hours >= 12 ? 'pm' : 'am';
-    hours = hours % 12;
-    hours = hours ? hours : 12; // the hour '0' should be '12'
-    const minutesStr = minutes < 10 ? `0${minutes}` : minutes;
-    
-    return `${dayName} ${dayStr} ${month} ${year} @ ${hours}:${minutesStr}${ampm}`;
+    try {
+      let date;
+      
+      // Handle Firestore timestamp objects (with seconds and nanoseconds)
+      if (timestamp && typeof timestamp === 'object' && 'seconds' in timestamp) {
+        // Convert Firestore timestamp to milliseconds and create a Date object
+        date = new Date(timestamp.seconds * 1000);
+      } else {
+        // Handle regular timestamp (number or string)
+        date = new Date(timestamp);
+      }
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        // console.error("Invalid date timestamp:", timestamp);
+        return "Invalid date";
+      }
+      
+      const days = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+      const months = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+      
+      const dayName = days[date.getDay()];
+      const day = date.getDate();
+      const month = months[date.getMonth()];
+      const year = date.getFullYear();
+      
+      // Add ordinal suffix to day
+      let dayStr = day.toString();
+      if (day > 3 && day < 21) dayStr += 'th';
+      else if (day % 10 === 1) dayStr += 'st';
+      else if (day % 10 === 2) dayStr += 'nd';
+      else if (day % 10 === 3) dayStr += 'rd';
+      else dayStr += 'th';
+      
+      // Format time
+      let hours = date.getHours();
+      const minutes = date.getMinutes();
+      const ampm = hours >= 12 ? 'pm' : 'am';
+      hours = hours % 12;
+      hours = hours ? hours : 12; // the hour '0' should be '12'
+      const minutesStr = minutes < 10 ? `0${minutes}` : minutes;
+      
+      return `${dayName} ${dayStr} ${month} ${year} @ ${hours}:${minutesStr}${ampm}`;
+    } catch (error) {
+      //console.error("Error formatting date:", error, timestamp);
+      return "Error formatting date";
+    }
   };
   
   const fullAppointmentDate = formatFullAppointmentDate(leadObj.appointmentDate || lead.appointmentDate);
@@ -1007,15 +1275,28 @@ export default function LeadDetailMobile() {
               <EmailIcon className="contact-pill-icon" />
               <Box className="contact-pill-content">
                 <Typography className="contact-pill-label">Email</Typography>
-                {lead.email || leadObj.email ? (
-                  <a href={`mailto:${lead.email || leadObj.email}`} className="contact-pill-value contact-link">
-                    {lead.email || leadObj.email}
+                {/* Check for email in startDate field first, then fall back to email field */}
+                {lead.startDate && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.startDate) ? (
+                  <a href={`mailto:${lead.startDate}`} className="contact-pill-value contact-link">
+                    {lead.startDate}
+                  </a>
+                ) : leadObj.startDate && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadObj.startDate) ? (
+                  <a href={`mailto:${leadObj.startDate}`} className="contact-pill-value contact-link">
+                    {leadObj.startDate}
+                  </a>
+                ) : lead.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(lead.email) ? (
+                  <a href={`mailto:${lead.email}`} className="contact-pill-value contact-link">
+                    {lead.email}
+                  </a>
+                ) : leadObj.email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadObj.email) ? (
+                  <a href={`mailto:${leadObj.email}`} className="contact-pill-value contact-link">
+                    {leadObj.email}
                   </a>
                 ) : (
                   <Typography className="contact-pill-value">N/A</Typography>
                 )}
               </Box>
-        </Box>
+            </Box>
 
             {/* Phone Pill */}
             <Box className="contact-pill">
@@ -1030,7 +1311,7 @@ export default function LeadDetailMobile() {
                   <Typography className="contact-pill-value">N/A</Typography>
                 )}
               </Box>
-        </Box>
+            </Box>
 
             {/* City Pill */}
             <Box className="contact-pill">
@@ -1055,7 +1336,14 @@ export default function LeadDetailMobile() {
               <CalendarTodayIcon className="contact-pill-icon" />
               <Box className="contact-pill-content">
                 <Typography className="contact-pill-label">Created</Typography>
-                <Typography className="contact-pill-value">{formatTimestamp(lead.timestamp)}</Typography>
+                <Typography className="contact-pill-value">
+                  {/* Check for Firestore timestamp object first */}
+                  {lead.timestamp && typeof lead.timestamp === 'object' && lead.timestamp.seconds ? 
+                    formatTimestamp(new Date(lead.timestamp.seconds * 1000)) :
+                    lead.timestamp && !isNaN(new Date(lead.timestamp).getTime()) ? 
+                      formatTimestamp(lead.timestamp) : 
+                      "No date available"}
+                </Typography>
               </Box>
             </Box>
           </Box>
@@ -1169,7 +1457,14 @@ export default function LeadDetailMobile() {
                     <Box className="activity-content">
                       <Typography className="activity-title">{act.title}</Typography>
                       <Typography className="activity-subtitle">{act.subtext}</Typography>
-                      <Typography className="activity-time">{formatTimestamp(act.timestamp)}</Typography>
+                      <Typography className="activity-time">
+                        {/* Handle Firestore timestamp objects */}
+                        {act.timestamp && typeof act.timestamp === 'object' && act.timestamp.seconds
+                          ? formatTimestamp(new Date(act.timestamp.seconds * 1000))
+                          : act.timestamp && !isNaN(new Date(act.timestamp).getTime())
+                            ? formatTimestamp(act.timestamp)
+                            : "Invalid Date"}
+                      </Typography>
                 </Box>
               </Box>
             ))

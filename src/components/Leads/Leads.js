@@ -63,11 +63,11 @@ const Leads = () => {
             },
           }
         );
-        console.log("Fetched google leads (first 3):", response.data.slice(0, 3));
+        // console.log("Fetched google leads (first 3):", response.data.slice(0, 3));
         setLeads(response.data || []);
         setFilteredLeads(response.data || []);
       } catch (error) {
-        console.error("Error fetching Google leads:", error);
+        // console.error("Error fetching Google leads:", error);
         setError("Failed to fetch leads");
       } finally {
         setLoading(false);
@@ -152,7 +152,7 @@ const Leads = () => {
 
   // Handle opening the MoreVert menu
   const handleMenuClick = (event, lead) => {
-    console.log("Clicked lead =>", lead); // Debug: check lead._id
+    // console.log("Clicked lead =>", lead); // Debug: check lead._id
     setAnchorEl(event.currentTarget);
     setSelectedLead(lead);
   };
@@ -198,9 +198,9 @@ const Leads = () => {
             },
           }
         );
-        console.log("Updated lead in Google Sheets API");
+        // console.log("Updated lead in Google Sheets API");
       } catch (apiError) {
-        console.warn("Could not update in Google Sheets API:", apiError);
+        // console.warn("Could not update in Google Sheets API:", apiError);
       }
 
       // Then update in Firebase
@@ -242,10 +242,10 @@ const Leads = () => {
         
         if (builderId) {
           await assignLeadToBuilder(selectedLead._id, builderId, editBuilder);
-          console.log("Updated lead in Firebase");
+          // console.log("Updated lead in Firebase");
         }
       } catch (firebaseError) {
-        console.warn("Could not update in Firebase:", firebaseError);
+        // console.warn("Could not update in Firebase:", firebaseError);
       }
 
       // Update local state so we see the change immediately
@@ -267,7 +267,7 @@ const Leads = () => {
 
       handleCloseEditDialog();
     } catch (error) {
-      console.error("Error updating lead:", error);
+      // console.error("Error updating lead:", error);
       setError("Error updating lead. Check console/server logs.");
     }
   };

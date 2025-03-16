@@ -1,14 +1,21 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Box, Typography, TextField, Button } from "@mui/material";
 // Update imports
 import { formatTimestamp } from '../../utils/dateUtils';
 
 export default function NotesSection({ leadObj, leadId, onAddNote }) {
   const [tempNote, setTempNote] = useState("");
+  
+  // Add debugging for notes
+  useEffect(() => {
+    console.log("NotesSection - leadObj:", leadObj);
+    console.log("NotesSection - notes:", leadObj.notes || []);
+  }, [leadObj]);
 
   const handleAddNote = () => {
     const noteContent = tempNote.trim();
     if (!noteContent) return;
+    console.log("NotesSection - Adding note:", noteContent);
     onAddNote(noteContent);
     setTempNote("");
   };

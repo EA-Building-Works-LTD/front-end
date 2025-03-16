@@ -7,11 +7,17 @@ const UserRoleContext = createContext();
 export const UserRoleProvider = ({ role, children }) => {
   // Add debugging to help troubleshoot role issues
   useEffect(() => {
-    console.log("UserRoleProvider - Current role:", role);
+    // console.log("UserRoleProvider - Current role:", role);
   }, [role]);
 
+  // Create a value object that includes isAdmin
+  const roleValue = {
+    role,
+    isAdmin: role === "admin"
+  };
+
   return (
-    <UserRoleContext.Provider value={role}>
+    <UserRoleContext.Provider value={roleValue}>
       {children}
     </UserRoleContext.Provider>
   );
@@ -19,10 +25,7 @@ export const UserRoleProvider = ({ role, children }) => {
 
 // Custom hook to access the user's role
 export const useUserRole = () => {
-  const role = useContext(UserRoleContext);
+  const roleValue = useContext(UserRoleContext);
   
-  // Add debugging to help troubleshoot role issues
-  console.log("useUserRole - Current role:", role);
-  
-  return role;
+  return roleValue || { role: "guest", isAdmin: false };
 };

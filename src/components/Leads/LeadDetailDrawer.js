@@ -345,7 +345,13 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenDateModal(true);
   };
   const handleSaveAppointment = (date) => {
-    updateLeadData({ appointmentDate: date });
+    // Ensure we're working with a valid timestamp
+    if (date && !isNaN(new Date(date).getTime())) {
+      console.log("Saving valid appointment date:", date);
+      updateLeadData({ appointmentDate: date });
+    } else {
+      console.error("Invalid appointment date received:", date);
+    }
     setOpenDateModal(false);
   };
 

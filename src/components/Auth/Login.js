@@ -16,6 +16,7 @@ import {
 } from "@mui/material";
 import { Visibility, VisibilityOff, AccountCircle, Lock } from "@mui/icons-material";
 import { loginWithEmail, resetPassword } from "../../firebase/auth";
+import sessionManager from "../../utils/sessionManager";
 
 export default function Login({ setUser }) {
   const [credentials, setCredentials] = useState({
@@ -42,6 +43,15 @@ export default function Login({ setUser }) {
       emailRef.current.focus();
     }
   }, [error]);
+
+  // Check for remembered email
+  useEffect(() => {
+    const rememberedEmail = localStorage.getItem("rememberedEmail");
+    if (rememberedEmail) {
+      setCredentials(prev => ({ ...prev, email: rememberedEmail }));
+      setRememberMe(true);
+    }
+  }, []);
 
   // Handle user login
   const handleLogin = async () => {

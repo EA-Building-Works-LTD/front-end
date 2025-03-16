@@ -4,11 +4,33 @@ import {
   createUserWithEmailAndPassword,
   updateProfile,
   sendPasswordResetEmail,
-  onAuthStateChanged
+  onAuthStateChanged,
+  getIdToken
 } from "firebase/auth";
 import { auth, db } from "./config";
 import { doc, setDoc, getDoc } from "firebase/firestore";
 import { collection, query, where, getDocs } from "firebase/firestore";
+
+/**
+ * Generate and store a JWT token for the current user
+ * @param {Object} user - Firebase user object
+ * @returns {Promise<string>} - JWT token
+ */
+export const generateAndStoreToken = async (user) => {
+  try {
+    // Get the Firebase ID token
+    const token = await getIdToken(user, true);
+    
+    // Store the token in localStorage
+    localStorage.setItem("token", token);
+    
+    console.log("JWT token generated and stored in localStorage");
+    return token;
+  } catch (error) {
+    console.error("Error generating token:", error);
+    throw error;
+  }
+};
 
 /**
  * Sign in a user with email and password
@@ -18,16 +40,19 @@ import { collection, query, where, getDocs } from "firebase/firestore";
  */
 export const loginWithEmail = async (email, password) => {
   try {
-    console.log(`loginWithEmail: Attempting to sign in with email ${email}`);
+    // console.log(`loginWithEmail: Attempting to sign in with email ${email}`);
     
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    console.log(`loginWithEmail: Sign in successful for ${email}`);
+    // console.log(`loginWithEmail: Sign in successful for ${email}`);
+    
+    // Generate and store JWT token
+    await generateAndStoreToken(userCredential.user);
     
     // Get user's role from Firestore
     const userDoc = await getDoc(doc(db, "users", userCredential.user.uid));
     
     if (!userDoc.exists()) {
-      console.log(`loginWithEmail: User document not found in Firestore for ${email}. Creating one...`);
+      // console.log(`loginWithEmail: User document not found in Firestore for ${email}. Creating one...`);
       
       // Create a user document if it doesn't exist
       const userData = {
@@ -39,7 +64,7 @@ export const loginWithEmail = async (email, password) => {
       
       await setDoc(doc(db, "users", userCredential.user.uid), userData);
       
-      console.log(`loginWithEmail: Created user document for ${email} with role 'user'`);
+      // console.log(`loginWithEmail: Created user document for ${email} with role 'user'`);
       
       return {
         user: userCredential.user,
@@ -48,14 +73,14 @@ export const loginWithEmail = async (email, password) => {
     }
     
     const userData = userDoc.data();
-    console.log(`loginWithEmail: User document found for ${email}. Role: ${userData?.role || 'user'}`);
+    // console.log(`loginWithEmail: User document found for ${email}. Role: ${userData?.role || 'user'}`);
     
     return {
       user: userCredential.user,
       role: userData?.role || "user"
     };
   } catch (error) {
-    console.error(`loginWithEmail: Error signing in with email ${email}:`, error);
+    // console.error(`loginWithEmail: Error signing in with email ${email}:`, error);
     throw error;
   }
 };
@@ -66,8 +91,21 @@ export const loginWithEmail = async (email, password) => {
  */
 export const logout = async () => {
   try {
+    // Clean up any session timeout resources if available
+    if (typeof window !== 'undefined' && window.sessionManager) {
+      try {
+        window.sessionManager.cleanup();
+      } catch (error) {
+        console.error('Error cleaning up session manager:', error);
+      }
+    }
+    
+    // Remove the token from localStorage
+    localStorage.removeItem("token");
+    
     await signOut(auth);
   } catch (error) {
+    console.error('Error during logout:', error);
     throw error;
   }
 };
@@ -82,13 +120,13 @@ export const logout = async () => {
  */
 export const registerWithEmail = async (email, password, displayName, role = "user") => {
   try {
-    console.log(`registerWithEmail: Starting registration for ${email} with role ${role}`);
+    // console.log(`registerWithEmail: Starting registration for ${email} with role ${role}`);
     
     // Save current auth state
     const currentUser = auth.currentUser;
     
     if (!currentUser) {
-      console.log("No user is currently logged in. Proceeding with normal registration.");
+      // console.log("No user is currently logged in. Proceeding with normal registration.");
       // Normal registration flow
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       await updateProfile(userCredential.user, { displayName });
@@ -112,7 +150,7 @@ export const registerWithEmail = async (email, password, displayName, role = "us
         }
       };
     } else {
-      console.log(`Current user is logged in: ${currentUser.email}. Using admin SDK approach.`);
+      // console.log(`Current user is logged in: ${currentUser.email}. Using admin SDK approach.`);
       
       // For creating a builder account while admin is logged in, we'll use a different approach
       // We'll create the user document in Firestore directly
@@ -131,7 +169,7 @@ export const registerWithEmail = async (email, password, displayName, role = "us
           };
         }
       } catch (error) {
-        console.error("Error checking for existing user:", error);
+        //    console.error("Error checking for existing user:", error);
       }
       
       // Generate a unique ID for the new user
@@ -148,7 +186,7 @@ export const registerWithEmail = async (email, password, displayName, role = "us
         adminEmail: currentUser.email
       });
       
-      console.log(`Created builder account for ${email} with ID: ${newUserId}`);
+      // console.log(`Created builder account for ${email} with ID: ${newUserId}`);
       
       return {
         success: true,
@@ -162,7 +200,7 @@ export const registerWithEmail = async (email, password, displayName, role = "us
       };
     }
   } catch (error) {
-    console.error(`registerWithEmail: Error registering user:`, error);
+    // console.error(`registerWithEmail: Error registering user:`, error);
     return {
       success: false,
       message: error.message || "Failed to create account",
@@ -191,11 +229,14 @@ export const resetPassword = async (email) => {
  */
 export const onAuthStateChange = (callback) => {
   return onAuthStateChanged(auth, async (user) => {
-    console.log(`onAuthStateChange: Auth state changed. User: ${user?.email || 'None'}`);
+    // console.log(`onAuthStateChange: Auth state changed. User: ${user?.email || 'None'}`);
     
     if (user) {
       // User is signed in
       try {
+        // Refresh the token
+        await generateAndStoreToken(user);
+        
         // Get user's role from Firestore
         const userDoc = await getDoc(doc(db, "users", user.uid));
         const userData = userDoc.data();
@@ -205,11 +246,14 @@ export const onAuthStateChange = (callback) => {
           role: userData?.role || "user"
         });
       } catch (error) {
-        console.error("Error getting user data:", error);
+        // console.error("Error getting user data:", error);
         callback({ user, role: "user" });
       }
     } else {
       // User is signed out
+      // Remove the token from localStorage
+      localStorage.removeItem("token");
+      
       callback(null);
     }
   });
