@@ -61,7 +61,7 @@ function getAllAppointments(myLeadData) {
     if (leadObj && leadObj.appointmentDate) {
       results.push({
         leadId,  // This is the key in myLeadData
-        customerName: leadObj.customerName || "Unknown",
+        customerName: leadObj.customerName || leadObj.fullName || "Unknown",
         address: leadObj.address || "", 
         builderName: leadObj.builderName || "",
         appointmentDate: leadObj.appointmentDate,
@@ -83,7 +83,7 @@ function getAllAppointments(myLeadData) {
       leadObj.appointments.forEach(appointment => {
         results.push({
           leadId,  // This is the key in myLeadData
-          customerName: leadObj.customerName || "Unknown",
+          customerName: leadObj.customerName || leadObj.fullName || "Unknown",
           address: leadObj.address || "",
           builderName: leadObj.builderName || "",
           appointmentDate: appointment.appointmentDate,
@@ -269,7 +269,7 @@ export default function AppointmentsPage() {
                 <Box className="appointment-with">
                   <PersonIcon className="appointment-with-icon" />
                   <Typography>
-                    Meeting with <strong>{apt.customerName || "Unknown"}</strong>
+                    Meeting with <strong>{apt.customerName || apt.fullName || "Unknown"}</strong>
                   </Typography>
                 </Box>
                 
@@ -342,7 +342,7 @@ export default function AppointmentsPage() {
                   <Box className="appointment-with">
                     <PersonIcon className="appointment-with-icon" />
                     <Typography>
-                      Meeting with <strong>{apt.customerName || "Unknown"}</strong>
+                      Meeting with <strong>{apt.customerName || apt.fullName || "Unknown"}</strong>
                     </Typography>
                   </Box>
                   

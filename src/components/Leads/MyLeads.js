@@ -1,5 +1,5 @@
 // src/MyLeads.js
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   Box,
   Avatar,
@@ -25,6 +25,8 @@ import {
   FormHelperText,
   Tooltip,
   Snackbar,
+  Badge,
+  Alert,
 } from "@mui/material";
 import { 
   Search, 
@@ -40,8 +42,10 @@ import {
   SortByAlpha,
   CalendarToday,
   Sync,
+  Notifications,
+  NotificationsActive,
 } from "@mui/icons-material";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useLocation } from "react-router-dom";
 import useFirebaseState from "../../hooks/useFirebaseState";
 import { getLeadsByBuilder } from "../../firebase/leads";
 import { auth } from "../../firebase/config";
@@ -49,31 +53,38 @@ import LeadDetailDrawer from "./LeadDetailDrawer";
 import { useUserRole } from "../Auth/UserRoleContext";
 import axios from "axios";
 import "./MyLeads.css";
-import { syncGoogleFormSubmissions } from "../../firebase/googleFormIntegration";
+import { 
+  fetchAndSyncNewLeads, 
+  fetchGoogleSheetLeads 
+} from "../../firebase/googleFormIntegration";
 
 const MyLeads = () => {
+  // Get location from React Router to check for state
+  const location = useLocation();
+  
   // API state
-  const [leads, setLeads] = useState([]);
-  const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState(location.state?.cachedLeads || []);
+  const [loading, setLoading] = useState(!location.state?.cachedLeads);
   const [error, setError] = useState("");
-  const [dataSource, setDataSource] = useState("firebase"); // 'firebase' or 'googleSheets'
+  const [dataSource, setDataSource] = useState(location.state?.dataSource || "firebase"); // 'firebase' or 'googleSheets'
   
   // Get user role from context
   const userRole = useUserRole();
+  console.log("Current user role in MyLeads:", userRole); // Debug user role
 
   // For row-click detail drawer (desktop)
   const [selectedLead, setSelectedLead] = useState(null);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
+  // Pagination - restore from cached state if available
+  const [currentPage, setCurrentPage] = useState(location.state?.currentPage || 1);
   const itemsPerPage = 10;
 
-  // Global search term
-  const [searchTerm, setSearchTerm] = useState("");
+  // Global search term - restore from cached state if available
+  const [searchTerm, setSearchTerm] = useState(location.state?.searchTerm || "");
 
   // Total leads count from Google Sheets
-  const [totalGoogleSheetLeads, setTotalGoogleSheetLeads] = useState(0);
+  const [totalGoogleSheetLeads, setTotalGoogleSheetLeads] = useState(location.state?.totalGoogleSheetLeads || 0);
 
   // Stage filter tabs – "All Customers" plus the six stage statuses
   const stageTabs = [
@@ -85,7 +96,7 @@ const MyLeads = () => {
     "Rejected",
     "Cancelled",
   ];
-  const [selectedStage, setSelectedStage] = useState("All Customers");
+  const [selectedStage, setSelectedStage] = useState(location.state?.selectedStage || "All Customers");
 
   // Date filter options
   const dateFilterOptions = [
@@ -100,8 +111,8 @@ const MyLeads = () => {
     { value: "1yearplus", label: "Older than 1 Year" },
   ];
 
-  // Filters state for each field – using empty string to mean "All"
-  const [filters, setFilters] = useState({
+  // Filters state for each field – restore from cached state if available
+  const [filters, setFilters] = useState(location.state?.filters || {
     customerName: "",
     address: "",
     city: "",
@@ -110,8 +121,9 @@ const MyLeads = () => {
     budget: "",
     dateAdded: "", // New date filter
   });
-  // Applied filters state: when user clicks Apply Filters
-  const [appliedFilters, setAppliedFilters] = useState({
+  
+  // Applied filters state - restore from cached state if available
+  const [appliedFilters, setAppliedFilters] = useState(location.state?.appliedFilters || {
     customerName: "",
     address: "",
     city: "",
@@ -124,11 +136,11 @@ const MyLeads = () => {
   // State for filter drawer open/close
   const [filterOpen, setFilterOpen] = useState(false);
 
-  // State for view mode (grouped or list)
-  const [viewMode, setViewMode] = useState("list");
+  // State for view mode (grouped or list) - restore from cached state if available
+  const [viewMode, setViewMode] = useState(location.state?.viewMode || "list");
 
-  // State for tracking expanded stages in grouped view
-  const [expandedStages, setExpandedStages] = useState({});
+  // State for tracking expanded stages in grouped view - restore from cached state if available
+  const [expandedStages, setExpandedStages] = useState(location.state?.expandedStages || {});
   
   // Number of leads to show initially per stage
   const initialLeadsPerStage = 3;
@@ -136,8 +148,28 @@ const MyLeads = () => {
   // Number of additional leads to load each time
   const leadsLoadIncrement = 5;
   
-  // State to track how many leads are shown for each stage
-  const [visibleLeadsCount, setVisibleLeadsCount] = useState({});
+  // State to track how many leads are shown for each stage - restore from cached state if available
+  const [visibleLeadsCount, setVisibleLeadsCount] = useState(location.state?.visibleLeadsCount || {});
+
+  // Sync state
+  const [syncingForms, setSyncingForms] = useState(false);
+  const [syncMessage, setSyncMessage] = useState("");
+  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  
+  // New state for auto-sync and new leads notification
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(
+    localStorage.getItem("autoSyncEnabled") === "true"
+  );
+  const [newLeadsCount, setNewLeadsCount] = useState(0);
+  const [newLeadsAlert, setNewLeadsAlert] = useState(false);
+  const autoSyncIntervalRef = useRef(null);
+  const lastSyncTimeRef = useRef(Date.now());
+
+  // Track if component is mounted to prevent state updates after unmounting
+  const isMounted = useRef(true);
+  
+  // Track if data has been loaded at least once
+  const dataLoadedOnce = useRef(!!location.state?.cachedLeads);
 
   const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
@@ -150,10 +182,24 @@ const MyLeads = () => {
     {}
   );
 
-  // Sync state
-  const [syncingForms, setSyncingForms] = useState(false);
-  const [syncMessage, setSyncMessage] = useState("");
-  const [snackbarOpen, setSnackbarOpen] = useState(false);
+  // Function to fetch Google leads - extracted for reuse
+  const fetchGoogleLeads = useCallback(async () => {
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+    
+    const response = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/google-leads`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    return response.data;
+  }, []);
 
   // Utility function to truncate text to a specific number of words
   const truncateText = (text, maxWords = 20) => {
@@ -166,7 +212,14 @@ const MyLeads = () => {
   };
 
   // Function to fetch leads
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
+    // Skip fetching if we already have cached leads from navigation state
+    if (dataLoadedOnce.current && leads.length > 0) {
+      console.log("Using cached leads data, skipping fetch");
+      setLoading(false);
+      return;
+    }
+    
     try {
       if (!auth.currentUser) {
         setError("You must be logged in to view leads");
@@ -175,7 +228,7 @@ const MyLeads = () => {
       }
       
       // Check if the user is an admin
-      const isAdmin = userRole === "admin";
+      const isAdmin = userRole === "admin" || userRole?.isAdmin === true || userRole?.role === "admin";
       
       let fetchedLeads = [];
       let source = "firebase";
@@ -198,34 +251,45 @@ const MyLeads = () => {
         
         // Fallback to Google Sheets
         try {
-          const token = localStorage.getItem("token");
-          const response = await axios.get(
-            `${process.env.REACT_APP_API_URL}/api/google-leads`,
-            {
-              headers: {
-                Authorization: `Bearer ${token}`,
-              },
-            }
-          );
+          const googleLeads = await fetchGoogleLeads();
           
-          fetchedLeads = response.data;
-          source = "googleSheets";
-          // console.log("Fetched leads from Google Sheets:", fetchedLeads.length);
-          
-          // If not admin, filter leads by builder name for non-admin users
-          if (!isAdmin) {
+          // If admin, show all leads from Google Sheets without filtering
+          if (isAdmin) {
+            fetchedLeads = googleLeads;
+            source = "googleSheets";
+            // console.log("Admin user - fetched all leads from Google Sheets:", fetchedLeads.length);
+          } else {
+            // For non-admin users, filter leads by builder name
+            fetchedLeads = googleLeads;
+            source = "googleSheets";
+            // console.log("Fetched leads from Google Sheets:", fetchedLeads.length);
+            
             // Get the builder's display name and email
             const displayName = auth.currentUser.displayName || "";
             const email = auth.currentUser.email || "";
-            // console.log("Current builder:", { displayName, email });
+            
+            // First, directly check for leads assigned by builderId
+            const leadsByBuilderId = fetchedLeads.filter(lead => 
+              lead.builderId === auth.currentUser.uid
+            );
+            
+            // Then filter the remaining leads by builder name
+            const remainingLeads = fetchedLeads.filter(lead => 
+              !leadsByBuilderId.some(idLead => idLead._id === lead._id)
+            );
+            
+            let nameMatchedLeads = [];
             
             // Check if the user has a display name set
             if (displayName) {
               // console.log(`Looking for leads with builder name matching displayName: "${displayName}"`);
               
               // Filter leads where the builder field matches the display name (case-insensitive)
-              fetchedLeads = fetchedLeads.filter(lead => {
+              nameMatchedLeads = remainingLeads.filter(lead => {
                 if (!lead.builder) return false;
+                
+                // Skip if this lead has been reassigned to another builder
+                if (lead.reassigned && lead.builderId && lead.builderId !== auth.currentUser.uid) return false;
                 
                 const builderLower = lead.builder.toLowerCase().trim();
                 const displayNameLower = displayName.toLowerCase().trim();
@@ -241,16 +305,20 @@ const MyLeads = () => {
                 return isMatch;
               });
               
-                // console.log(`Found ${fetchedLeads.length} leads matching displayName: "${displayName}"`);
+                // console.log(`Found ${nameMatchedLeads.length} leads matching displayName: "${displayName}"`);
             }
             // Special case for Zain (email: gcconstruction@live.co.uk)
             else if (email.toLowerCase() === "gcconstruction@live.co.uk") {
               // console.log("Special case for Zain - looking for leads with 'Zain' in builder field");
-              fetchedLeads = fetchedLeads.filter(lead => {
+              nameMatchedLeads = remainingLeads.filter(lead => {
                 if (!lead.builder) return false;
+                
+                // Skip if this lead has been reassigned to another builder
+                if (lead.reassigned && lead.builderId && lead.builderId !== auth.currentUser.uid) return false;
+                
                 return lead.builder.toLowerCase().includes("zain");
               });
-              // console.log("Found Zain's leads:", fetchedLeads.length);
+              // console.log("Found Zain's leads:", nameMatchedLeads.length);
             } 
             // Fallback to email-based matching if no display name and not Zain
             else {
@@ -275,8 +343,11 @@ const MyLeads = () => {
               // console.log("Possible builder name matches from email:", [...possibleMatches]);
               
               // Filter leads where the builder field matches any of the possible identifiers
-              fetchedLeads = fetchedLeads.filter(lead => {
+              nameMatchedLeads = remainingLeads.filter(lead => {
                 if (!lead.builder) return false;
+                
+                // Skip if this lead has been reassigned to another builder
+                if (lead.reassigned && lead.builderId && lead.builderId !== auth.currentUser.uid) return false;
                 
                 const builderLower = lead.builder.toLowerCase().trim();
                 
@@ -292,8 +363,12 @@ const MyLeads = () => {
                 return isMatch;
               });
               
-              // console.log("Filtered leads count:", fetchedLeads.length);
+              // console.log("Filtered leads count:", nameMatchedLeads.length);
             }
+            
+            // Combine leads assigned by builderId with those matched by name
+            fetchedLeads = [...leadsByBuilderId, ...nameMatchedLeads];
+            // console.log("Total combined leads:", fetchedLeads.length);
           }
         } catch (apiError) {
           // console.error("Error fetching leads from API:", apiError);
@@ -311,13 +386,117 @@ const MyLeads = () => {
         (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
       );
       
-      setLeads(sortedLeads);
+      if (isMounted.current) {
+        setLeads(sortedLeads);
+        dataLoadedOnce.current = true;
+      }
+      
+      // Clear new leads notification if we're refreshing the leads
+      if (clearNewLeadsNotification) {
+        clearNewLeadsNotification();
+      }
     } catch (err) {
       //console.error("Error fetching leads:", err);
-      setError("Failed to fetch leads. Please try again later.");
+      if (isMounted.current) {
+        setError("Failed to fetch leads. Please try again later.");
+      }
     } finally {
-      setLoading(false);
+      if (isMounted.current) {
+        setLoading(false);
+      }
     }
+  }, [auth.currentUser, userRole, fetchGoogleLeads, leads.length]);
+
+  // Function to clear new leads notification
+  const clearNewLeadsNotification = () => {
+    setNewLeadsCount(0);
+    setNewLeadsAlert(false);
+  };
+
+  // Function to fetch only new leads and sync them
+  const fetchNewLeads = useCallback(async (showNotification = true) => {
+    if (userRole !== "admin" && userRole?.role !== "admin" && userRole?.isAdmin !== true) {
+      return;
+    }
+    
+    try {
+      // Only show loading indicator if manually triggered
+      if (showNotification) {
+        setSyncingForms(true);
+        setSyncMessage("Checking for new leads...");
+      }
+      
+      // Use the new function to fetch and sync only new leads
+      const result = await fetchAndSyncNewLeads(fetchGoogleLeads);
+      
+      // Update last sync time
+      lastSyncTimeRef.current = Date.now();
+      
+      if (result.newLeads && result.newLeads.length > 0) {
+        // If we found new leads, refresh the leads list
+        await fetchLeads();
+        
+        // Show notification about new leads
+        if (showNotification) {
+          setSyncMessage(`Found ${result.newLeads.length} new leads! ${result.message}`);
+          setSnackbarOpen(true);
+        } else {
+          // If auto-sync, update the badge count
+          setNewLeadsCount(prev => prev + result.newLeads.length);
+          setNewLeadsAlert(true);
+        }
+      } else if (showNotification) {
+        // Only show "no new leads" message if manually triggered
+        setSyncMessage("No new leads found");
+        setSnackbarOpen(true);
+      }
+    } catch (error) {
+      console.error("Error fetching new leads:", error);
+      if (showNotification) {
+        setSyncMessage("Error checking for new leads: " + error.message);
+        setSnackbarOpen(true);
+      }
+    } finally {
+      if (showNotification) {
+        setSyncingForms(false);
+      }
+    }
+  }, [userRole, fetchGoogleLeads, fetchLeads]);
+
+  // Update the useEffect hook that handles auto-sync
+  useEffect(() => {
+    // Check if auto-sync is enabled in localStorage
+    const autoSyncSetting = localStorage.getItem('autoSyncEnabled');
+    setAutoSyncEnabled(autoSyncSetting === 'true');
+    
+    // Set up interval for auto-sync if enabled
+    let syncInterval;
+    
+    if (autoSyncEnabled && (userRole === "admin" || userRole?.role === "admin" || userRole?.isAdmin === true)) {
+      console.log("Auto-sync is enabled, setting up interval");
+      
+      // Initial sync when component mounts
+      syncLeads(false);
+      
+      // Set up interval for auto-sync (every 5 minutes)
+      syncInterval = setInterval(() => {
+        console.log("Auto-sync triggered");
+        syncLeads(false); // Regular sync, not forced
+      }, 5 * 60 * 1000); // 5 minutes
+    }
+    
+    return () => {
+      if (syncInterval) {
+        clearInterval(syncInterval);
+      }
+    };
+  }, [autoSyncEnabled, userRole]);
+
+  // Toggle auto-sync
+  const toggleAutoSync = () => {
+    const newValue = !autoSyncEnabled;
+    setAutoSyncEnabled(newValue);
+    localStorage.setItem("autoSyncEnabled", newValue.toString());
   };
 
   // Fetch total leads count from Google Sheets
@@ -351,19 +530,21 @@ const MyLeads = () => {
     }
   };
 
-  // Fetch leads on mount and when userRole changes
+  // Fetch leads on mount and when userRole changes, but only if we don't have cached data
   useEffect(() => {
-    fetchLeads();
+    if (!dataLoadedOnce.current || leads.length === 0) {
+      fetchLeads();
+    }
     
     // Always fetch the total leads count for admin users
     const isAdmin = userRole?.isAdmin || userRole === "admin";
     //console.log("Current user role:", userRole, "Is admin:", isAdmin);
     
-    if (isAdmin) {
+    if (isAdmin && !location.state?.totalGoogleSheetLeads) {
       //console.log("User is admin, fetching total leads count");
       fetchTotalLeadsCount();
     }
-  }, [userRole]);
+  }, [userRole, fetchLeads, leads.length, location.state?.totalGoogleSheetLeads]);
 
   // Add a separate useEffect to ensure totalGoogleSheetLeads is set correctly
   useEffect(() => {
@@ -559,7 +740,28 @@ const MyLeads = () => {
   const handleRowClick = (lead) => {
     if (isMobile) {
       const slug = slugify(lead.fullName || "unknown");
-      navigate(`/my-leads/${slug}`, { state: { lead } });
+      
+      // Save current state before navigating
+      const currentState = {
+        cachedLeads: leads,
+        dataSource,
+        currentPage,
+        searchTerm,
+        totalGoogleSheetLeads,
+        selectedStage,
+        filters,
+        appliedFilters,
+        viewMode,
+        expandedStages,
+        visibleLeadsCount
+      };
+      
+      navigate(`/my-leads/${slug}`, { 
+        state: { 
+          lead,
+          previousState: currentState
+        } 
+      });
     } else {
       setSelectedLead(lead);
       setDrawerOpen(true);
@@ -689,48 +891,41 @@ const MyLeads = () => {
   };
 
   // Function to sync Google Form submissions
-  const handleSyncGoogleForms = async () => {
-    if (userRole !== "admin") {
-      // console.log("Only admins can sync Google Forms");    
-      return;
-    }
-    
+  const syncLeads = async (force = false) => {
     setSyncingForms(true);
-    setSyncMessage("");
+    setSyncMessage("Syncing leads from Google Sheets...");
     
     try {
-      // Fetch leads from Google Sheets API
-      const token = localStorage.getItem("token");
-      const response = await axios.get(
-        `${process.env.REACT_APP_API_URL}/api/google-leads`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      // Call the updated fetchAndSyncNewLeads function with the force parameter
+      const result = await fetchAndSyncNewLeads(force);
       
-      const googleLeads = response.data;
-      
-      // Sync new submissions to Firebase
-      const result = await syncGoogleFormSubmissions(googleLeads);
-      
-      setSyncMessage(result.message);
-      setSnackbarOpen(true);
-      
-      // Refresh leads to show newly synced data
-      fetchLeads();
+      if (result.success) {
+        setSyncMessage(`${result.message}`);
+        // Refresh leads after sync
+        fetchLeads();
+      } else {
+        setSyncMessage(`Sync failed: ${result.message}`);
+      }
     } catch (error) {
-      // console.error("Error syncing Google Form submissions:", error);
-      setSyncMessage("Error syncing Google Form submissions: " + error.message);
-      setSnackbarOpen(true);
+      console.error("Error syncing leads:", error);
+      setSyncMessage(`Error syncing: ${error.message}`);
     } finally {
       setSyncingForms(false);
+      // Show sync message for 5 seconds
+      setTimeout(() => {
+        setSyncMessage("");
+      }, 5000);
     }
   };
 
-  const handleCloseSnackbar = () => {
-    setSnackbarOpen(false);
+  // Update the resetSync function to force a full sync
+  const resetSync = () => {
+    // Clear the last sync timestamp and row ID
+    localStorage.removeItem("lastGoogleFormSyncTimestamp");
+    localStorage.removeItem("lastProcessedGoogleFormRowId");
+    
+    // Force a full sync
+    syncLeads(true);
   };
 
   // Render desktop table view.
@@ -1197,18 +1392,68 @@ const MyLeads = () => {
           className="search-field"
         />
         <div className="action-buttons">
-          {userRole === "admin" && (
-            <Tooltip title="Sync new Google Form submissions">
-              <Button 
-                variant="outlined" 
-                startIcon={<Sync />} 
-                onClick={handleSyncGoogleForms}
-                disabled={syncingForms}
-                sx={{ mr: 1 }}
-              >
-                {syncingForms ? "Syncing..." : "Sync Forms"}
-              </Button>
-            </Tooltip>
+          {(userRole === "admin" || userRole?.role === "admin" || userRole?.isAdmin === true) && (
+            <>
+              {/* New Leads Button with Badge */}
+              <div className="sync-buttons-container">
+                <Tooltip title="Check for new leads">
+                  <Badge 
+                    badgeContent={newLeadsCount} 
+                    color="error"
+                    invisible={!newLeadsAlert}
+                    className="new-leads-badge"
+                  >
+                    <Button 
+                      variant="outlined" 
+                      startIcon={newLeadsAlert ? <NotificationsActive /> : <Notifications />}
+                      onClick={() => fetchNewLeads(true)}
+                      disabled={syncingForms}
+                      color={newLeadsAlert ? "error" : "primary"}
+                    >
+                      {syncingForms ? "Checking..." : "New Leads"}
+                    </Button>
+                  </Badge>
+                </Tooltip>
+                
+                {/* Auto-sync Toggle */}
+                <Tooltip title={autoSyncEnabled ? "Disable auto-sync" : "Enable auto-sync"}>
+                  <Button 
+                    variant={autoSyncEnabled ? "contained" : "outlined"}
+                    onClick={toggleAutoSync}
+                    className={`auto-sync-button ${autoSyncEnabled ? 'enabled' : ''}`}
+                    size="small"
+                  >
+                    {autoSyncEnabled ? "Auto-Sync ON" : "Auto-Sync OFF"}
+                  </Button>
+                </Tooltip>
+                
+                {/* Full Sync Button */}
+                <Tooltip title="Sync all Google Form submissions">
+                  <Button 
+                    variant="outlined" 
+                    startIcon={<Sync />} 
+                    onClick={() => syncLeads(true)}
+                    disabled={syncingForms}
+                    className="full-sync-button"
+                  >
+                    {syncingForms ? "Syncing..." : "Full Sync"}
+                  </Button>
+                </Tooltip>
+                
+                {/* Reset Sync Button */}
+                <Tooltip title="Reset sync state to force a full resync">
+                  <Button 
+                    variant="outlined" 
+                    color="warning"
+                    onClick={resetSync}
+                    className="reset-sync-button"
+                    size="small"
+                  >
+                    Reset Sync
+                  </Button>
+                </Tooltip>
+              </div>
+            </>
           )}
           <Button 
             variant="outlined" 
@@ -1226,6 +1471,18 @@ const MyLeads = () => {
           </Button>
         </div>
       </Box>
+
+      {/* New Leads Alert */}
+      {newLeadsAlert && (
+        <Alert 
+          severity="info" 
+          onClose={clearNewLeadsNotification}
+          sx={{ mb: 2 }}
+          className="new-leads-alert"
+        >
+          {newLeadsCount} new lead{newLeadsCount !== 1 ? 's' : ''} found! These leads have been automatically synced.
+        </Alert>
+      )}
 
       {/* Active Filter Heading */}
       {appliedFilters.dateAdded && (
@@ -1289,7 +1546,7 @@ const MyLeads = () => {
             Filters
           </Typography>
 
-          {userRole === "admin" && (
+          {(userRole === "admin" || userRole?.role === "admin" || userRole?.isAdmin === true) && (
             <Box className="admin-note" sx={{ mb: 2, p: 1.5, bgcolor: 'rgba(42, 157, 143, 0.1)', borderRadius: 1 }}>
               <Typography variant="body2" sx={{ color: '#2A9D8F', fontWeight: 500 }}>
                 Admin View: You are seeing leads from all builders in the system. 
@@ -1383,7 +1640,7 @@ const MyLeads = () => {
       <Snackbar
         open={snackbarOpen}
         autoHideDuration={6000}
-        onClose={handleCloseSnackbar}
+        onClose={() => setSnackbarOpen(false)}
         message={syncMessage}
       />
     </Box>

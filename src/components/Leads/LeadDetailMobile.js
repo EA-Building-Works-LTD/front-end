@@ -128,6 +128,7 @@ export default function LeadDetailMobile() {
 
   // Retrieve lead from router state
   const lead = location.state?.lead;
+  const previousState = location.state?.previousState;
   const hasLead = Boolean(lead);
 
   // Add debugging
@@ -147,9 +148,12 @@ export default function LeadDetailMobile() {
   // If screen is desktop, redirect
   useEffect(() => {
     if (isDesktop) {
-      navigate("/my-leads", { replace: true });
+      navigate("/my-leads", { 
+        replace: true,
+        state: previousState
+      });
     }
-  }, [isDesktop, navigate]);
+  }, [isDesktop, navigate, previousState]);
 
   // Initialize ephemeral data if not present
   useEffect(() => {
@@ -1162,6 +1166,12 @@ export default function LeadDetailMobile() {
     { icon: <EditIcon />, name: 'Change Stage', onClick: handleOpenStageModal },
   ];
 
+  // Handle back button click
+  const handleBackClick = () => {
+    // Navigate back to MyLeads with the previous state to avoid reloading
+    navigate("/my-leads", { state: previousState });
+  };
+
   // -------------------- RENDER --------------------
   if (!hasLead) {
     // If no lead found in location.state
@@ -1170,7 +1180,7 @@ export default function LeadDetailMobile() {
         <Typography variant="h6" color="error">
           Lead data not found.
         </Typography>
-        <Button onClick={() => navigate("/my-leads")}>Go Back</Button>
+        <Button onClick={handleBackClick}>Go Back</Button>
       </Box>
     );
   }
@@ -1189,7 +1199,7 @@ export default function LeadDetailMobile() {
       
       {/* Header - simplified to only show back button and customer name */}
       <Box className="mobile-header">
-        <IconButton onClick={() => navigate("/my-leads")}>
+        <IconButton onClick={handleBackClick}>
           <ArrowBackIcon />
         </IconButton>
         <Typography variant="h6">{displayedName}</Typography>

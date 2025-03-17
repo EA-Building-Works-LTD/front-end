@@ -58,6 +58,7 @@ export const getLeadsByBuilder = async (builderId, isAdmin = false) => {
     //console.log(`Builder user - filtering by builderId: ${builderId}`);
     
     // 1. First get leads assigned by builderId
+    // Modified query to include all leads where builderId matches, regardless of reassignment status
     const builderIdQuery = query(
       collection(db, LEADS_COLLECTION),
       where("builderId", "==", builderId),
@@ -102,6 +103,9 @@ export const getLeadsByBuilder = async (builderId, isAdmin = false) => {
           // Skip if we already have this lead or if it has no builder field
           if (existingIds.has(doc.id) || !data.builder) return;
           
+          // Skip if this lead has been reassigned to another builder
+          if (data.reassigned && data.builderId && data.builderId !== builderId) return;
+          
           const builderLower = data.builder.toLowerCase().trim();
           const displayNameLower = displayName.toLowerCase().trim();
           
@@ -141,6 +145,9 @@ export const getLeadsByBuilder = async (builderId, isAdmin = false) => {
           
           // Skip if we already have this lead
           if (existingIds.has(doc.id)) return;
+          
+          // Skip if this lead has been reassigned to another builder
+          if (data.reassigned && data.builderId && data.builderId !== builderId) return;
           
           // Check if builder field contains "Zain"
           if (data.builder && data.builder.toLowerCase().includes("zain")) {
@@ -191,6 +198,9 @@ export const getLeadsByBuilder = async (builderId, isAdmin = false) => {
           
           // Skip if we already have this lead
           if (existingIds.has(doc.id) || !data.builder) return;
+          
+          // Skip if this lead has been reassigned to another builder
+          if (data.reassigned && data.builderId && data.builderId !== builderId) return;
           
           const builderLower = data.builder.toLowerCase();
           
@@ -425,23 +435,43 @@ export const assignLeadToBuilder = async (leadId, builderId, builderName) => {
       throw new Error("Lead not found");
     }
     
+    // Get the current lead data to track the previous builder
+    const leadData = docSnap.data();
+    const previousBuilderId = leadData.builderId || null;
+    const previousBuilderName = leadData.builder || "Unknown";
+    
+    // Only proceed with reassignment if the builder is actually changing
+    if (previousBuilderId === builderId && previousBuilderName === builderName) {
+      // console.log(`Lead ${leadId} is already assigned to ${builderName}, no changes needed`);
+      return;
+    }
+    
     // Update the lead with the new builder information
     await updateDoc(docRef, { 
       builderId,
       builder: builderName,
-      assignedAt: serverTimestamp()
+      assignedAt: serverTimestamp(),
+      // Store the previous builder information for reference
+      previousBuilderId,
+      previousBuilderName,
+      // Add a flag to indicate this lead has been reassigned
+      reassigned: true,
+      reassignedAt: serverTimestamp()
     });
     
     // Add an activity for the assignment
-    const leadData = docSnap.data();
     const activities = leadData.activities || [];
     
     await updateDoc(docRef, {
       activities: [...activities, {
         type: "assignment",
-        title: "Lead Assigned",
-        description: `Lead assigned to ${builderName}`,
-        timestamp: serverTimestamp()
+        title: "Lead Reassigned",
+        description: `Lead reassigned from ${previousBuilderName} to ${builderName}`,
+        timestamp: serverTimestamp(),
+        previousBuilderId,
+        previousBuilderName,
+        newBuilderId: builderId,
+        newBuilderName: builderName
       }]
     });
     

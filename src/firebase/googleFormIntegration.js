@@ -4,12 +4,194 @@ import {
   query,
   where,
   getDocs,
-  serverTimestamp 
+  serverTimestamp,
+  doc,
+  updateDoc
 } from "firebase/firestore";
 import { db } from "./config";
 import { addLead } from "./leads";
+import axios from "axios";
 
 const USERS_COLLECTION = "users";
+
+/**
+ * Fetches leads data from Google Sheets
+ * 
+ * @returns {Promise<Array>} - Array of lead objects from Google Sheets
+ */
+export const fetchGoogleSheetLeads = async () => {
+  try {
+    console.log("Fetching leads from Google Sheets API");
+    
+    // Get the authentication token from local storage
+    const token = localStorage.getItem("token");
+    if (!token) {
+      throw new Error("No authentication token found");
+    }
+    
+    // Make the API request to fetch leads from Google Sheets
+    const response = await axios.get(
+      `${process.env.REACT_APP_API_URL}/api/google-leads`,
+      {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      }
+    );
+    
+    if (!response.data || !Array.isArray(response.data)) {
+      console.error("Invalid response data format:", response.data);
+      return [];
+    }
+    
+    console.log(`Fetched ${response.data.length} leads from Google Sheets API`);
+    return response.data;
+  } catch (error) {
+    console.error("Error fetching leads from Google Sheets:", error);
+    throw error;
+  }
+};
+
+/**
+ * Fetches and syncs new leads from Google Sheets
+ * This function will always sync the 20 most recent leads, plus any additional new leads
+ * 
+ * @param {boolean} forceSync - Whether to force sync all leads regardless of last sync timestamp
+ * @returns {Promise<Object>} - Object with sync results
+ */
+export const fetchAndSyncNewLeads = async (forceSync = false) => {
+  try {
+    console.log("Fetching and syncing new leads from Google Sheets");
+    
+    // Get the last sync timestamp from local storage
+    const lastSyncTimestamp = localStorage.getItem("lastGoogleFormSyncTimestamp");
+    const lastProcessedRowId = localStorage.getItem("lastProcessedGoogleFormRowId");
+    
+    console.log(`Last sync timestamp: ${lastSyncTimestamp ? new Date(parseInt(lastSyncTimestamp)).toLocaleString() : 'Never'}`);
+    console.log(`Last processed row ID: ${lastProcessedRowId || 'None'}`);
+    
+    // Fetch all leads from Google Sheets
+    const googleSheetLeads = await fetchGoogleSheetLeads();
+    
+    if (!googleSheetLeads || googleSheetLeads.length === 0) {
+      console.log("No leads found in Google Sheets");
+      return {
+        success: false,
+        message: "No leads found in Google Sheets",
+        syncedCount: 0
+      };
+    }
+    
+    console.log(`Fetched ${googleSheetLeads.length} leads from Google Sheets`);
+    
+    // Sort leads by timestamp (newest first) or by row ID if timestamp is not available
+    const sortedLeads = [...googleSheetLeads].sort((a, b) => {
+      // Try to use timestamp first
+      const timestampA = a.timestamp ? new Date(a.timestamp).getTime() : 0;
+      const timestampB = b.timestamp ? new Date(b.timestamp).getTime() : 0;
+      
+      if (timestampA && timestampB) {
+        return timestampB - timestampA; // Descending order (newest first)
+      }
+      
+      // Fall back to row ID
+      const rowIdA = parseInt(a.rowId || a._id || 0);
+      const rowIdB = parseInt(b.rowId || b._id || 0);
+      
+      return rowIdB - rowIdA; // Descending order (newest first)
+    });
+    
+    // Take the 20 most recent leads
+    const latestLeads = sortedLeads.slice(0, 20);
+    
+    // Log a sample of the latest leads for debugging
+    console.log(`Top 3 latest leads sample:`, latestLeads.slice(0, 3).map(lead => ({
+      fullName: lead.fullName,
+      timestamp: lead.timestamp,
+      rowId: lead.rowId || lead._id,
+      email: lead.email
+    })));
+    
+    // Find any additional new leads that are not in the latest 20
+    // but are newer than the last sync timestamp or row ID
+    let additionalNewLeads = [];
+    
+    if (!forceSync && lastSyncTimestamp && lastProcessedRowId) {
+      const lastSyncTime = parseInt(lastSyncTimestamp);
+      const lastRowId = parseInt(lastProcessedRowId);
+      
+      additionalNewLeads = sortedLeads.slice(20).filter(lead => {
+        // Check if lead is newer than last sync timestamp
+        const leadTimestamp = lead.timestamp ? new Date(lead.timestamp).getTime() : 0;
+        if (leadTimestamp && leadTimestamp > lastSyncTime) {
+          return true;
+        }
+        
+        // Check if lead has a higher row ID than last processed
+        const rowId = parseInt(lead.rowId || lead._id || 0);
+        if (rowId && rowId > lastRowId) {
+          return true;
+        }
+        
+        return false;
+      });
+      
+      console.log(`Found ${additionalNewLeads.length} additional new leads since last sync`);
+    }
+    
+    // Combine latest leads with any additional new leads
+    const leadsToSync = [...latestLeads, ...additionalNewLeads];
+    
+    console.log(`Syncing ${leadsToSync.length} leads (${latestLeads.length} latest + ${additionalNewLeads.length} additional new)`);
+    
+    // Sync the leads to Firebase
+    const syncResults = await syncGoogleFormSubmissions(leadsToSync);
+    
+    // Only update the last sync timestamp and row ID if we had some successful syncs
+    if (syncResults.synced > 0) {
+      // Update the last sync timestamp and row ID in local storage
+      const now = Date.now();
+      localStorage.setItem("lastGoogleFormSyncTimestamp", now.toString());
+      
+      // Find the highest row ID in the synced leads
+      const highestRowId = Math.max(...leadsToSync.map(lead => parseInt(lead.rowId || lead._id || 0)));
+      if (highestRowId > 0) {
+        localStorage.setItem("lastProcessedGoogleFormRowId", highestRowId.toString());
+      }
+      
+      console.log(`Sync completed at ${new Date(now).toLocaleString()}, highest row ID: ${highestRowId}`);
+    } else {
+      console.log("No leads were successfully synced. Not updating last sync timestamp or row ID.");
+      
+      if (syncResults.errors > 0) {
+        console.log(`${syncResults.errors} errors occurred during sync.`);
+        if (syncResults.errorMessages && syncResults.errorMessages.length > 0) {
+          console.log("First few error messages:");
+          syncResults.errorMessages.slice(0, 3).forEach((msg, i) => {
+            console.log(`${i + 1}. ${msg}`);
+          });
+        }
+      }
+    }
+    
+    return {
+      ...syncResults,
+      success: syncResults.synced > 0,
+      message: syncResults.synced > 0 
+        ? `Synced ${syncResults.synced} leads (${syncResults.new} new, ${syncResults.updated} updated)` 
+        : `Failed to sync leads. ${syncResults.errors} errors occurred.`,
+      newLeads: leadsToSync
+    };
+  } catch (error) {
+    console.error("Error fetching and syncing new leads:", error);
+    return {
+      success: false,
+      message: `Error: ${error.message}`,
+      syncedCount: 0,
+      newLeads: []
+    };
+  }
+};
 
 /**
  * Processes a Google Form submission and stores it in Firebase
@@ -17,10 +199,14 @@ const USERS_COLLECTION = "users";
  * that's triggered when a new form submission is added to the Google Sheet
  * 
  * @param {Object} formData - The form submission data
- * @returns {Promise<string>} - ID of the new lead in Firebase
+ * @param {string} [existingLeadId] - Optional ID of an existing lead to update
+ * @returns {Promise<string>} - ID of the new or updated lead in Firebase
  */
-export const processGoogleFormSubmission = async (formData) => {
+export const processGoogleFormSubmission = async (formData, existingLeadId = null) => {
   try {
+    const isUpdate = !!existingLeadId;
+    console.log(`${isUpdate ? 'Updating' : 'Processing'} form submission for ${formData.fullName || 'Unknown'}, Row ID: ${formData.rowId || 'N/A'}`);
+    
     // Extract builder name from the form data
     const builderName = formData.builder || "N/A";
     
@@ -133,6 +319,28 @@ export const processGoogleFormSubmission = async (formData) => {
       }
     }
     
+    // Ensure we have a valid timestamp
+    let timestamp;
+    if (formData.timestamp) {
+      // Try to parse the timestamp
+      const parsedDate = new Date(formData.timestamp);
+      if (!isNaN(parsedDate.getTime())) {
+        timestamp = parsedDate;
+      } else if (typeof formData.timestamp === 'number') {
+        // If it's a number, assume it's seconds since epoch
+        timestamp = new Date(formData.timestamp * 1000);
+      } else {
+        // If we can't parse it, use current time
+        timestamp = new Date();
+      }
+    } else {
+      timestamp = new Date();
+    }
+    
+    // Ensure we have a valid row ID
+    const googleSheetRowId = formData.rowId || formData._id || null;
+    console.log(`Using Google Sheet Row ID: ${googleSheetRowId}`);
+    
     // Prepare lead data from Google Form submission
     const leadData = {
       // Basic contact info
@@ -157,29 +365,70 @@ export const processGoogleFormSubmission = async (formData) => {
       builderId: builderId,
       builder: matchedBuilderName || builderName, // Use the matched builder name if found
       originalBuilderName: builderName, // Store the original builder name from the form
-      stage: "New Lead",
-      stageManuallySet: false,
+      
+      // Only set stage and stageManuallySet for new leads
+      ...(isUpdate ? {} : {
+        stage: "New Lead",
+        stageManuallySet: false,
+      }),
       
       // Timestamps
-      timestamp: formData.timestamp ? new Date(formData.timestamp) : serverTimestamp(),
+      timestamp: timestamp,
+      updatedAt: serverTimestamp(), // Add a server timestamp for when it was updated
       
       // Additional metadata
-      activities: [
+      googleFormSubmission: true, // Flag to indicate this came from a Google Form
+      googleSheetRowId: googleSheetRowId
+    };
+    
+    // For new leads
+    if (!isUpdate) {
+      leadData.createdAt = serverTimestamp(); // Keep serverTimestamp for top-level fields
+      leadData.activities = [
         {
           type: "stage_change",
           title: "New Lead Created",
           description: `Lead has been submitted for ${matchedBuilderName || builderName || "unknown"}`,
-          timestamp: serverTimestamp()
+          timestamp: new Date() // Use regular Date object instead of serverTimestamp()
         }
-      ],
-      googleFormSubmission: true, // Flag to indicate this came from a Google Form
-      googleSheetRowId: formData.rowId || null
-    };
+      ];
+    } else {
+      // For updates, add an update activity
+      const leadsCollection = collection(db, "leads");
+      const leadDoc = await getDocs(query(leadsCollection, where("__name__", "==", existingLeadId)));
+      
+      if (!leadDoc.empty) {
+        const existingData = leadDoc.docs[0].data();
+        const existingActivities = existingData.activities || [];
+        
+        // Add a new activity for the update
+        leadData.activities = [
+          ...existingActivities,
+          {
+            type: "update",
+            title: "Lead Updated",
+            description: `Lead information updated from Google Sheet`,
+            timestamp: new Date() // Use regular Date object instead of serverTimestamp()
+          }
+        ];
+      }
+    }
     
-    // Add the lead to Firestore
-    const leadId = await addLead(leadData);
+    let leadId;
     
-    console.log(`Added lead ${leadId} for builder ${matchedBuilderName || builderName}`);
+    // Add or update the lead in Firestore
+    if (isUpdate) {
+      // Update existing lead
+      const leadRef = doc(db, "leads", existingLeadId);
+      await updateDoc(leadRef, leadData);
+      leadId = existingLeadId;
+      console.log(`Updated lead ${leadId} for builder ${matchedBuilderName || builderName}, Row ID: ${googleSheetRowId}`);
+    } else {
+      // Add new lead
+      leadId = await addLead(leadData);
+      console.log(`Added lead ${leadId} for builder ${matchedBuilderName || builderName}, Row ID: ${googleSheetRowId}`);
+    }
+    
     return leadId;
   } catch (error) {
     console.error("Error processing Google Form submission:", error);
@@ -188,49 +437,57 @@ export const processGoogleFormSubmission = async (formData) => {
 };
 
 /**
- * Syncs new Google Form submissions
- * This would be called periodically to check for new submissions
+ * Syncs Google Form submissions from a Google Sheet to Firebase
  * 
- * @param {Array} googleSheetLeads - Array of leads from Google Sheets
- * @returns {Promise<{success: boolean, message: string, syncedCount: number}>}
+ * @param {Array} leads - Array of lead objects from Google Sheets
+ * @returns {Promise<Object>} - Object with counts of synced, skipped, and errored leads
  */
-export const syncGoogleFormSubmissions = async (googleSheetLeads) => {
+export const syncGoogleFormSubmissions = async (leads) => {
   try {
-    console.log(`Syncing ${googleSheetLeads?.length || 0} leads from Google Sheets`);
+    console.log(`Starting sync of ${leads.length} leads from Google Sheets to Firebase`);
     
-    if (!googleSheetLeads || googleSheetLeads.length === 0) {
-      return {
-        success: false,
-        message: "No leads provided from Google Sheets",
-        syncedCount: 0
-      };
-    }
+    // Initialize counters
+    let syncedCount = 0;
+    let newCount = 0;
+    let updatedCount = 0;
+    let skippedCount = 0;
+    let errorCount = 0;
+    let errorMessages = [];
     
-    // Get existing leads from Firebase to avoid duplicates
+    // Get all existing leads from Firebase for comparison
     const leadsCollection = collection(db, "leads");
     const existingLeadsSnapshot = await getDocs(leadsCollection);
     
-    // Create a map of existing leads by email and phone for quick lookup
-    const existingLeadsByEmail = new Map();
-    const existingLeadsByPhone = new Map();
+    // Create maps for faster lookups
+    const leadsByRowId = new Map();
+    const leadsByEmail = new Map();
+    const leadsByPhone = new Map();
     
-    existingLeadsSnapshot.forEach(doc => {
+    existingLeadsSnapshot.forEach((doc) => {
       const leadData = doc.data();
       
-      // Index by email if available
-      if (leadData.email) {
-        existingLeadsByEmail.set(leadData.email.toLowerCase(), {
+      // Map by Google Sheet Row ID
+      if (leadData.googleSheetRowId) {
+        leadsByRowId.set(leadData.googleSheetRowId.toString(), {
           id: doc.id,
           ...leadData
         });
       }
       
-      // Index by phone if available
-      if (leadData.phoneNumber) {
-        // Normalize phone number by removing non-digits
+      // Map by email (if available and valid)
+      if (leadData.email && leadData.email !== "N/A" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(leadData.email)) {
+        leadsByEmail.set(leadData.email.toLowerCase(), {
+          id: doc.id,
+          ...leadData
+        });
+      }
+      
+      // Map by phone number (if available and valid)
+      if (leadData.phoneNumber && leadData.phoneNumber !== "N/A") {
+        // Normalize phone number by removing non-numeric characters
         const normalizedPhone = leadData.phoneNumber.replace(/\D/g, '');
-        if (normalizedPhone) {
-          existingLeadsByPhone.set(normalizedPhone, {
+        if (normalizedPhone.length > 0) {
+          leadsByPhone.set(normalizedPhone, {
             id: doc.id,
             ...leadData
           });
@@ -238,84 +495,139 @@ export const syncGoogleFormSubmissions = async (googleSheetLeads) => {
       }
     });
     
-    console.log(`Found ${existingLeadsSnapshot.size} existing leads in Firebase`);
-    
-    let syncedCount = 0;
-    let skippedCount = 0;
-    let errorCount = 0;
+    console.log(`Found ${leadsByRowId.size} leads by Row ID, ${leadsByEmail.size} by email, and ${leadsByPhone.size} by phone`);
     
     // Process each lead from Google Sheets
-    const syncPromises = googleSheetLeads.map(async (lead) => {
+    for (const lead of leads) {
       try {
-        // Skip leads without essential information
-        if (!lead.fullName || (!lead.phoneNumber && !lead.email)) {
-          console.log(`Skipping lead with insufficient data: ${lead.fullName || 'Unknown'}`);
+        // Skip leads without required fields
+        if (!lead || (!lead.fullName && !lead.phoneNumber && !lead.email)) {
+          console.log(`Skipping lead with missing required fields: ${JSON.stringify(lead)}`);
           skippedCount++;
-          return;
+          continue;
         }
         
-        // Check if lead already exists by email
+        // Prepare row ID for comparison
+        const rowId = (lead.rowId || lead._id || "").toString();
+        
+        // Prepare email for comparison
+        const email = lead.email && typeof lead.email === 'string' ? lead.email.toLowerCase() : null;
+        
+        // Prepare phone number for comparison
+        const phoneNumber = lead.phoneNumber ? lead.phoneNumber.replace(/\D/g, '') : null;
+        
+        // Check if lead already exists in Firebase by Row ID
         let existingLead = null;
-        if (lead.email) {
-          existingLead = existingLeadsByEmail.get(lead.email.toLowerCase());
-          if (existingLead) {
-            console.log(`Lead with email ${lead.email} already exists in Firebase (ID: ${existingLead.id})`);
-            skippedCount++;
-            return;
-          }
-        }
         
-        // Check if lead already exists by phone
-        if (!existingLead && lead.phoneNumber) {
-          // Normalize phone number by removing non-digits
-          const normalizedPhone = lead.phoneNumber.replace(/\D/g, '');
-          if (normalizedPhone) {
-            existingLead = existingLeadsByPhone.get(normalizedPhone);
-            if (existingLead) {
-              console.log(`Lead with phone ${lead.phoneNumber} already exists in Firebase (ID: ${existingLead.id})`);
-              skippedCount++;
-              return;
+        if (rowId) {
+          existingLead = leadsByRowId.get(rowId);
+          if (existingLead) {
+            console.log(`Found existing lead by Row ID ${rowId}: ${existingLead.fullName} (${existingLead.id})`);
+            
+            // Update the existing lead with the latest data from Google Sheets
+            try {
+              // Process the Google Form submission (will update the existing lead)
+              await processGoogleFormSubmission(lead, existingLead.id);
+              updatedCount++;
+              syncedCount++;
+              console.log(`Updated lead ${existingLead.id} by Row ID match`);
+              continue;
+            } catch (error) {
+              console.error(`Error updating lead ${existingLead.id} by Row ID:`, error);
+              errorCount++;
+              errorMessages.push(`Error updating lead ${existingLead.fullName} (${existingLead.id}): ${error.message}`);
+              continue;
             }
           }
         }
         
-        // If lead doesn't exist, process it
-        const formData = {
-          ...lead,
-          timestamp: lead.timestamp || new Date().toISOString(),
-          rowId: lead._id || null
-        };
+        // If not found by Row ID, check by email
+        if (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          existingLead = leadsByEmail.get(email);
+          if (existingLead) {
+            console.log(`Found existing lead by email ${email}: ${existingLead.fullName} (${existingLead.id})`);
+            
+            // Update the existing lead with the latest data from Google Sheets
+            try {
+              // Process the Google Form submission (will update the existing lead)
+              await processGoogleFormSubmission(lead, existingLead.id);
+              updatedCount++;
+              syncedCount++;
+              console.log(`Updated lead ${existingLead.id} by email match`);
+              continue;
+            } catch (error) {
+              console.error(`Error updating lead ${existingLead.id} by email:`, error);
+              errorCount++;
+              errorMessages.push(`Error updating lead ${existingLead.fullName} (${existingLead.id}): ${error.message}`);
+              continue;
+            }
+          }
+        }
         
-        // Process the Google Form submission
-        await processGoogleFormSubmission(formData);
-        syncedCount++;
+        // If not found by email, check by phone number
+        if (phoneNumber && phoneNumber.length > 0) {
+          existingLead = leadsByPhone.get(phoneNumber);
+          if (existingLead) {
+            console.log(`Found existing lead by phone ${phoneNumber}: ${existingLead.fullName} (${existingLead.id})`);
+            
+            // Update the existing lead with the latest data from Google Sheets
+            try {
+              // Process the Google Form submission (will update the existing lead)
+              await processGoogleFormSubmission(lead, existingLead.id);
+              updatedCount++;
+              syncedCount++;
+              console.log(`Updated lead ${existingLead.id} by phone match`);
+              continue;
+            } catch (error) {
+              console.error(`Error updating lead ${existingLead.id} by phone:`, error);
+              errorCount++;
+              errorMessages.push(`Error updating lead ${existingLead.fullName} (${existingLead.id}): ${error.message}`);
+              continue;
+            }
+          }
+        }
         
-        console.log(`Successfully synced lead: ${lead.fullName}`);
+        // If lead doesn't exist, process it as a new lead
+        console.log(`Syncing new lead: ${lead.fullName}, Row ID: ${lead.rowId}, Email: ${lead.email || 'N/A'}, Phone: ${lead.phoneNumber || 'N/A'}`);
+        
+        try {
+          // Process the Google Form submission
+          const leadId = await processGoogleFormSubmission(lead);
+          newCount++;
+          syncedCount++;
+          console.log(`Added new lead ${leadId}`);
+        } catch (error) {
+          console.error(`Error processing new lead ${lead.fullName || 'Unknown'}:`, error);
+          errorCount++;
+          errorMessages.push(`Error adding new lead ${lead.fullName || 'Unknown'}: ${error.message}`);
+        }
       } catch (error) {
-        console.error(`Error syncing lead ${lead.fullName || 'Unknown'}:`, error);
+        console.error(`Error processing lead ${lead.fullName || 'Unknown'}:`, error);
         errorCount++;
+        errorMessages.push(`Error processing lead ${lead.fullName || 'Unknown'}: ${error.message}`);
       }
-    });
+    }
     
-    // Wait for all sync operations to complete
-    await Promise.all(syncPromises);
+    // Log a summary of the sync operation
+    console.log(`Sync completed: ${syncedCount} leads synced (${newCount} new, ${updatedCount} updated), ${skippedCount} skipped, ${errorCount} errors`);
     
-    const message = `Sync completed: ${syncedCount} leads synced, ${skippedCount} skipped, ${errorCount} errors`;
-    console.log(message);
+    if (errorMessages.length > 0) {
+      console.log("Error details:");
+      errorMessages.forEach((msg, index) => {
+        console.log(`${index + 1}. ${msg}`);
+      });
+    }
     
     return {
-      success: syncedCount > 0,
-      message,
-      syncedCount,
-      skippedCount,
-      errorCount
+      synced: syncedCount,
+      new: newCount,
+      updated: updatedCount,
+      skipped: skippedCount,
+      errors: errorCount,
+      errorMessages: errorMessages
     };
   } catch (error) {
     console.error("Error syncing Google Form submissions:", error);
-    return {
-      success: false,
-      message: `Error syncing: ${error.message}`,
-      syncedCount: 0
-    };
+    throw error;
   }
 }; 
