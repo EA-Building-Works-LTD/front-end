@@ -394,9 +394,10 @@ export const addLeadAppointment = async (leadId, appointment) => {
  * Add a proposal to a lead
  * @param {string} leadId - The ID of the lead
  * @param {Object} proposal - Proposal object
+ * @param {Object} activity - Activity log entry for the proposal creation
  * @returns {Promise<void>}
  */
-export const addLeadProposal = async (leadId, proposal) => {
+export const addLeadProposal = async (leadId, proposal, activity = null) => {
   try {
     const docRef = doc(db, LEADS_COLLECTION, leadId);
     const docSnap = await getDoc(docRef);
@@ -404,9 +405,16 @@ export const addLeadProposal = async (leadId, proposal) => {
     if (docSnap.exists()) {
       const leadData = docSnap.data();
       const proposals = leadData.proposals || [];
+      const activities = leadData.activities || [];
+      
+      // If an activity was provided, add it to the activities array
+      const updatedActivities = activity 
+        ? [...activities, activity] 
+        : activities;
       
       await updateDoc(docRef, {
-        proposals: [...proposals, proposal]
+        proposals: [...proposals, proposal],
+        activities: updatedActivities
       });
     } else {
       throw new Error("Lead not found");
@@ -478,6 +486,35 @@ export const assignLeadToBuilder = async (leadId, builderId, builderName) => {
     // console.log(`Successfully assigned lead ${leadId} to builder ${builderName}`);
   } catch (error) {
     // console.error("Error assigning lead to builder:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get leads with contract values for the dashboard
+ * This is an optimized version of getLeadsByBuilder that only returns leads
+ * with contract values, reducing unnecessary data fetching for the dashboard
+ * 
+ * @param {string} builderId - The ID of the builder
+ * @param {boolean} isAdmin - Whether the user is an admin
+ * @returns {Promise<Array>} - Array of lead objects with contract values
+ */
+export const getLeadsForDashboard = async (builderId, isAdmin = false) => {
+  try {
+    let allLeads = await getLeadsByBuilder(builderId, isAdmin);
+    
+    // Filter to only include leads with contract values
+    const leadsWithContracts = allLeads.filter(lead => {
+      if (!lead.contractAmount) return false;
+      
+      // Try to extract numeric value
+      const contractValue = parseFloat(lead.contractAmount.replace(/[^0-9.-]+/g, ""));
+      return !isNaN(contractValue) && contractValue > 0;
+    });
+    
+    return leadsWithContracts;
+  } catch (error) {
+    console.error("Error fetching dashboard leads:", error);
     throw error;
   }
 }; 

@@ -46,7 +46,6 @@ import {
   NotificationsActive,
 } from "@mui/icons-material";
 import { useNavigate, useLocation } from "react-router-dom";
-import useFirebaseState from "../../hooks/useFirebaseState";
 import { getLeadsByBuilder } from "../../firebase/leads";
 import { auth } from "../../firebase/config";
 import LeadDetailDrawer from "./LeadDetailDrawer";
@@ -57,6 +56,31 @@ import {
   fetchAndSyncNewLeads, 
   fetchGoogleSheetLeads 
 } from "../../firebase/googleFormIntegration";
+
+// Helper functions for localStorage
+const getLeadDataFromStorage = () => {
+  try {
+    const data = localStorage.getItem(`myLeadData_${auth.currentUser?.uid || 'anonymous'}`);
+    return data ? JSON.parse(data) : {};
+  } catch (error) {
+    console.error("Error reading from localStorage:", error);
+    return {};
+  }
+};
+
+const saveLeadDataToStorage = (data) => {
+  try {
+    localStorage.setItem(`myLeadData_${auth.currentUser?.uid || 'anonymous'}`, JSON.stringify(data));
+  } catch (error) {
+    console.error("Error saving to localStorage:", error);
+  }
+};
+
+// Helper function to truncate text
+const truncateText = (text, maxLength = 30) => {
+  if (!text) return "N/A";
+  return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+};
 
 const MyLeads = () => {
   // Get location from React Router to check for state
@@ -174,13 +198,15 @@ const MyLeads = () => {
   const isMobile = useMediaQuery("(max-width: 768px)");
   const navigate = useNavigate();
 
-  // Retrieve lead data from Firebase
-  const [allLeadData] = useFirebaseState(
-    "leadData",
-    auth.currentUser?.uid || "anonymous",
-    "myLeadData",
-    {}
-  );
+  // Use localStorage for lead data instead of useFirebaseState
+  const [myLeadData, setMyLeadData] = useState(getLeadDataFromStorage());
+  
+  // Effect to save myLeadData to localStorage when it changes
+  useEffect(() => {
+    if (Object.keys(myLeadData).length > 0) {
+      saveLeadDataToStorage(myLeadData);
+    }
+  }, [myLeadData]);
 
   // Function to fetch Google leads - extracted for reuse
   const fetchGoogleLeads = useCallback(async () => {
@@ -201,17 +227,7 @@ const MyLeads = () => {
     return response.data;
   }, []);
 
-  // Utility function to truncate text to a specific number of words
-  const truncateText = (text, maxWords = 20) => {
-    if (!text) return "N/A";
-    
-    const words = text.split(/\s+/);
-    if (words.length <= maxWords) return text;
-    
-    return words.slice(0, maxWords).join(" ") + "...";
-  };
-
-  // Function to fetch leads
+  // Function to fetch leads - replace instances where we used allLeadData with myLeadData
   const fetchLeads = useCallback(async () => {
     // Skip fetching if we already have cached leads from navigation state
     if (dataLoadedOnce.current && leads.length > 0) {
@@ -232,7 +248,6 @@ const MyLeads = () => {
       
       let fetchedLeads = [];
       let source = "firebase";
-      
       
       // Try to fetch from Firebase first
       try {
@@ -405,7 +420,7 @@ const MyLeads = () => {
         setLoading(false);
       }
     }
-  }, [auth.currentUser, userRole, fetchGoogleLeads, leads.length]);
+  }, [userRole, fetchGoogleLeads, leads.length]);
 
   // Function to clear new leads notification
   const clearNewLeadsNotification = () => {
@@ -564,8 +579,8 @@ const MyLeads = () => {
     // const isWithin14Days = isLeadWithinTimeRange(lead, 14);
     
     // Get the stored stage from Firebase (if any)
-    const storedStage = allLeadData[lead._id]?.stage;
-    const stageManuallySet = allLeadData[lead._id]?.stageManuallySet;
+    const storedStage = myLeadData[lead._id]?.stage;
+    const stageManuallySet = myLeadData[lead._id]?.stageManuallySet;
     
     let stage;
     

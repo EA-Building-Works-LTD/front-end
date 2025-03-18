@@ -36,6 +36,8 @@ import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
 import StorageIcon from "@mui/icons-material/Storage";
 import BuildIcon from "@mui/icons-material/Build";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 // IMPORTANT: Import jwtDecode as default from 'jwt-decode'
 // import { jwtDecode } from "jwt-decode";
@@ -283,6 +285,19 @@ function App() {
         <LeadsProvider>
           <Box className="app-container">
             <CssBaseline />
+            
+            {/* Toast Container for notifications */}
+            <ToastContainer
+              position="top-right"
+              autoClose={5000}
+              hideProgressBar={false}
+              newestOnTop
+              closeOnClick
+              rtl={false}
+              pauseOnFocusLoss
+              draggable
+              pauseOnHover
+            />
 
             {/* Session Timeout Warning Dialog */}
             <SessionTimeoutDialog
@@ -563,39 +578,6 @@ function App() {
                           fontSize: "0.7rem",
                         }}
                       >
-                        Documents
-                      </Typography>
-
-                      <ListItemButton
-                        component={Link}
-                        to="/proposals"
-                        className={`sidebar-listitem ${
-                          isActive("/proposals") ? "active" : ""
-                        }`}
-                        onClick={toggleDrawer}
-                      >
-                        <ListItemIcon className="sidebar-listicon">
-                          <DescriptionIcon />
-                        </ListItemIcon>
-                        <BoldListItemText primary="Proposals" />
-                      </ListItemButton>
-
-                      <Divider
-                        sx={{ my: 2, bgcolor: "rgba(255,255,255,0.1)" }}
-                      />
-
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "rgba(255,255,255,0.5)",
-                          px: 3,
-                          py: 1,
-                          display: "block",
-                          textTransform: "uppercase",
-                          letterSpacing: "1px",
-                          fontSize: "0.7rem",
-                        }}
-                      >
                         Planning
                       </Typography>
 
@@ -658,39 +640,6 @@ function App() {
                           <CalendarMonthIcon />
                         </ListItemIcon>
                         <BoldListItemText primary="Appointments" />
-                      </ListItemButton>
-
-                      <Divider
-                        sx={{ my: 2, bgcolor: "rgba(255,255,255,0.1)" }}
-                      />
-
-                      <Typography
-                        variant="caption"
-                        sx={{
-                          color: "rgba(255,255,255,0.5)",
-                          px: 3,
-                          py: 1,
-                          display: "block",
-                          textTransform: "uppercase",
-                          letterSpacing: "1px",
-                          fontSize: "0.7rem",
-                        }}
-                      >
-                        Documents
-                      </Typography>
-
-                      <ListItemButton
-                        component={Link}
-                        to="/proposals"
-                        className={`sidebar-listitem ${
-                          isActive("/proposals") ? "active" : ""
-                        }`}
-                        onClick={toggleDrawer}
-                      >
-                        <ListItemIcon className="sidebar-listicon">
-                          <DescriptionIcon />
-                        </ListItemIcon>
-                        <BoldListItemText primary="Proposals" />
                       </ListItemButton>
 
                       <Divider

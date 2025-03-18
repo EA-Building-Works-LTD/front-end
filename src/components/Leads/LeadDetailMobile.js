@@ -18,6 +18,7 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
+import { toast } from 'react-toastify';
 
 // Icons
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -59,7 +60,7 @@ import { formatWithCommas } from "../../utils/dateUtils";
 import { v4 as uuidv4 } from "uuid";
 import useFirebaseState from "../../hooks/useFirebaseState";
 import { auth } from "../../firebase/config";
-import { updateLead, getLeadById } from "../../firebase/leads";
+import { updateLead, getLeadById, addLeadProposal } from "../../firebase/leads";
 
 // Components (same functionality as desktop)
 import NotesSection from './NotesSection';
@@ -427,41 +428,43 @@ export default function LeadDetailMobile() {
   }
 
   function addProposalToLead(proposal) {
-    setAllLeadData((prev) => {
-      const oldData = prev[lead._id] || {};
-      const oldProposals = oldData.proposals || [];
-      const oldActivities = oldData.activities || [];
-
-      const newActivities = [
-        ...oldActivities,
-        createActivity(
-          "Proposal Created",
-          `Proposal #${proposal.proposalNumber} was created.`
-        ),
-      ];
-      
-      const updatedProposals = [...oldProposals, proposal];
-      
-      // Create the updated lead object
-      const updatedLead = { 
-        ...oldData, 
-        proposals: updatedProposals, 
-        activities: newActivities 
-      };
-      
-      // Persist to Firebase directly
-      updateLead(lead._id, {
-        proposals: updatedProposals,
-        activities: newActivities
-      }).catch(err => {
-        // console.error("Error saving proposal to Firebase:", err);
-      });
-      
-      return {
-        ...prev,
-        [lead._id]: updatedLead,
-      };
+    // Ensure proposal has the current user's ID
+    if (!proposal.builderId) {
+      proposal.builderId = auth.currentUser?.uid;
+    }
+    
+    // Create activity for the proposal creation
+    const newActivity = createActivity(
+      "Proposal Created",
+      `Proposal #${proposal.proposalNumber} was created.`
+    );
+    
+    // Create the updated lead object with new proposal and activity
+    const updatedProposals = [...(lead.proposals || []), proposal];
+    const updatedActivities = [...(lead.activities || []), newActivity];
+    
+    const updatedLead = { 
+      ...lead, 
+      proposals: updatedProposals, 
+      activities: updatedActivities 
+    };
+    
+    // Use addLeadProposal to ensure proper Firebase integration
+    addLeadProposal(lead._id, proposal, newActivity).catch(err => {
+      console.error("Error saving proposal to Firebase:", err);
     });
+    
+    // Update local state
+    setAllLeadData(prev => ({
+      ...prev,
+      [lead._id]: updatedLead
+    }));
+    
+    // Close the proposal modal
+    setOpenProposalModal(false);
+    
+    // Show success message
+    toast.success("Proposal added successfully!");
   }
 
   function updateProposalStatus(proposalId, newStatus) {
@@ -671,6 +674,7 @@ export default function LeadDetailMobile() {
       dateAccepted: null, // Initially null
       status: "Pending",
       amount: leadObj.contractAmount || lead.contractAmount || "0",
+      builderId: auth.currentUser?.uid, // Add the current user's ID to identify who created the proposal
     });
     setOpenProposalModal(true);
   };

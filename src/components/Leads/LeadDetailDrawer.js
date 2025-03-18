@@ -46,6 +46,7 @@ import HistoryIcon from "@mui/icons-material/History";
 import ImageIcon from "@mui/icons-material/Image";
 import BusinessIcon from "@mui/icons-material/Business";
 import EditIcon from "@mui/icons-material/Edit";
+import { toast } from 'react-toastify';
 
 import {
   formatTimestamp,
@@ -265,34 +266,46 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
   }
 
   // Add a new proposal
-  function addProposalToLead(proposal) {
-    setAllLeadData((prev) => {
-      const oldData = prev[lead._id] || {};
-      const oldProposals = oldData.proposals || [];
-      const oldActivities = oldData.activities || [];
+  const addProposalToLead = async (proposal) => {
+    try {
+      // Make sure the proposal has a builderId
+      if (!proposal.builderId) {
+        proposal.builderId = auth.currentUser?.uid;
+      }
 
-      const newActivities = [
-        ...oldActivities,
-        createActivity("Proposal Created", `Proposal #${proposal.proposalNumber} was created.`),
-      ];
-
-      const updatedLead = {
-        ...oldData,
-        proposals: [...oldProposals, proposal],
-        activities: newActivities,
+      const newLead = {
+        ...leadObj,
+        proposals: [...(leadObj.proposals || []), proposal],
       };
 
-      // Update the lead in Firebase (async)
-      addLeadProposal(lead._id, proposal).catch(err => 
-        console.error("Error adding proposal to lead in Firebase:", err)
-      );
+      // Add an activity log for the new proposal
+      const newActivity = {
+        id: Date.now(),
+        timestamp: Date.now(),
+        title: "Proposal Created",
+        subtext: `Proposal #${proposal.proposalNumber} created for £${proposal.amount}`,
+      };
 
-      return {
+      newLead.activities = [...(newLead.activities || []), newActivity];
+
+      // Use the addLeadProposal function from api/leads.js to properly save the proposal with Firebase
+      await addLeadProposal(lead._id, proposal, newActivity);
+
+      // Update local state
+      setAllLeadData((prev) => ({
         ...prev,
-        [lead._id]: updatedLead,
-      };
-    });
-  }
+        [lead._id]: newLead,
+      }));
+
+      // Call the onClose prop to close the drawer
+      onClose();
+
+      toast.success("Proposal added successfully");
+    } catch (error) {
+      console.error("Error adding proposal:", error);
+      toast.error("Failed to add proposal");
+    }
+  };
 
   // Update a proposal's status
   function updateProposalStatus(proposalId, newStatus) {
@@ -375,6 +388,7 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
       dateAccepted: null,
       status: "Pending",
       amount: leadObj.contractAmount || "0",
+      builderId: auth.currentUser?.uid,
     });
     setOpenProposalModal(true);
   };

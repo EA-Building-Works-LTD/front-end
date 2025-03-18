@@ -1,6 +1,6 @@
 // Dashboard.js
 
-import React, { useRef, useState, useEffect, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Box,
   Grid,
@@ -8,526 +8,640 @@ import {
   CardContent,
   Typography,
   Button,
-  Avatar,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  TextField,
+  CircularProgress,
+  Tabs,
+  Tab,
   Table,
   TableHead,
   TableRow,
   TableCell,
   TableBody,
-  Checkbox,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   TableContainer,
   Paper,
+  Chip,
+  IconButton,
+  Tooltip,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
 } from "@mui/material";
-// import { Link } from "react-router-dom";
-import jsPDF from "jspdf";
+import { 
+  PieChart, 
+  Pie, 
+  Cell, 
+  BarChart, 
+  Bar, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip as RechartsTooltip, 
+  ResponsiveContainer,
+  Legend 
+} from 'recharts';
 import "./Dashboard.css";
-import { useUserRole } from "./Auth/UserRoleContext";
+import { getLeadsForDashboard } from "../firebase/leads";
+import { auth } from "../firebase/config";
+import { formatCurrency } from "../utils/formatters";
+import RefreshIcon from '@mui/icons-material/Refresh';
+import ViewListIcon from '@mui/icons-material/ViewList';
+import DonutLargeIcon from '@mui/icons-material/DonutLarge';
+import BarChartIcon from '@mui/icons-material/BarChart';
 
-// Utility for formatting the date to DD/MM/YYYY
-function formatUKDate(dateObj) {
+// Helper function to calculate commission
+const calculateCommission = (profit) => {
+  return profit * 0.1; // 10% commission
+};
+
+// Helper function to format date to UK format (DD/MM/YYYY)
+const formatUKDate = (timestamp) => {
+  if (!timestamp) return "N/A";
+  const dateObj = timestamp instanceof Date ? timestamp : 
+    typeof timestamp === 'object' && timestamp.seconds ? 
+      new Date(timestamp.seconds * 1000) :
+      new Date(timestamp);
+  
   const d = String(dateObj.getDate()).padStart(2, "0");
   const m = String(dateObj.getMonth() + 1).padStart(2, "0");
   const y = dateObj.getFullYear();
   return `${d}/${m}/${y}`;
-}
+};
+
+const COLORS = ['#2A9D8F', '#E9C46A', '#F4A261', '#E76F51', '#264653', '#8ECAE6', '#219EBC', '#023047'];
 
 export default function Dashboard() {
-  // --- State Declarations ---
-  const userRole = useUserRole();
-  const [builders, setBuilders] = useState([
-    { id: 1, name: "N.Hussain", image: "https://via.placeholder.com/40" },
-    { id: 2, name: "Z.Khan", image: "https://via.placeholder.com/40" },
-    { id: 3, name: "H.Ali", image: "https://via.placeholder.com/40" },
-    { id: 4, name: "M.Ahmed", image: "https://via.placeholder.com/40" },
-    { id: 5, name: "F.Khan", image: "https://via.placeholder.com/40" },
-  ]);
-
-  const [invoiceNumber, setInvoiceNumber] = useState(10001);
-  const [invoices, setInvoices] = useState([]);
-  const [selectedRows, setSelectedRows] = useState([]);
-  const [tableAction, setTableAction] = useState("");
-  const [selectedBuilderId, setSelectedBuilderId] = useState(null);
-  const [invoiceAmount, setInvoiceAmount] = useState("100");
-  const [openDialog, setOpenDialog] = useState(false);
-  const [newBuilderName, setNewBuilderName] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [leads, setLeads] = useState([]);
+  const [tabValue, setTabValue] = useState(0);
+  const [viewType, setViewType] = useState('table'); // 'table', 'pie', 'bar'
+  const [timeFilter, setTimeFilter] = useState('all'); // 'all', 'month', 'year'
   
-  // For horizontal scroller
-  const scrollRef = useRef(null);
-  const [isDown, setIsDown] = useState(false);
-  const [startX, setStartX] = useState(0);
-  const [scrollLeft, setScrollLeft] = useState(0);
-
-  // --- Effects ---
-  // Load invoices from localStorage on mount
+  // Fetch all leads with contract values as admin
   useEffect(() => {
-    const saved = localStorage.getItem("invoices");
-    if (saved) {
-      setInvoices(JSON.parse(saved));
-    }
-  }, []);
-
-  // Save invoices to localStorage whenever they change
-  useEffect(() => {
-    localStorage.setItem("invoices", JSON.stringify(invoices));
-  }, [invoices]);
-
-  // --- Derived Values using useMemo ---
-  const doneBalance = useMemo(
-    () =>
-      invoices.reduce((acc, inv) => (inv.status === "Done" ? acc + Number(inv.amount) : acc), 0),
-    [invoices]
-  );
-
-  const pendingBalance = useMemo(
-    () =>
-      invoices.reduce((acc, inv) => (inv.status === "Pending" ? acc + Number(inv.amount) : acc), 0),
-    [invoices]
-  );
-
-  const builderPayments = useMemo(() => {
-    return builders.map((builder) => {
-      const totalPaid = invoices
-        .filter((inv) => inv.builderName === builder.name && inv.status === "Done")
-        .reduce((sum, inv) => sum + Number(inv.amount), 0);
-      return { ...builder, totalPaid };
-    });
-  }, [builders, invoices]);
-
-  const topBuilders = useMemo(() => {
-    return [...builderPayments].sort((a, b) => b.totalPaid - a.totalPaid).slice(0, 5);
-  }, [builderPayments]);
-
-  const disableRequest = useMemo(() => {
-    return !selectedBuilderId || !invoiceAmount || Number(invoiceAmount) < 1;
-  }, [selectedBuilderId, invoiceAmount]);
-
-  // --- Event Handlers using useCallback ---
-
-  // Builder scroller events
-  const handleMouseDown = useCallback((e) => {
-    if (!scrollRef.current) return;
-    setIsDown(true);
-    setStartX(e.pageX - scrollRef.current.offsetLeft);
-    setScrollLeft(scrollRef.current.scrollLeft);
-  }, []);
-
-  const handleMouseLeave = useCallback(() => setIsDown(false), []);
-  const handleMouseUp = useCallback(() => setIsDown(false), []);
-  const handleMouseMove = useCallback((e) => {
-    if (!isDown || !scrollRef.current) return;
-    e.preventDefault();
-    const x = e.pageX - scrollRef.current.offsetLeft;
-    scrollRef.current.scrollLeft = scrollLeft - (x - startX);
-  }, [isDown, scrollLeft, startX]);
-
-  // Row checkbox handler
-  const handleRowCheckbox = useCallback((invId, checked) => {
-    setSelectedRows((prev) =>
-      checked ? [...prev, invId] : prev.filter((id) => id !== invId)
-    );
-  }, []);
-
-  // Table action handler
-  const handleTableActionChange = useCallback((e) => {
-    const action = e.target.value;
-    setTableAction(action);
-
-    if (selectedRows.length < 1) return;
-
-    if (action === "Pending" || action === "Done") {
-      setInvoices((prev) =>
-        prev.map((inv) =>
-          selectedRows.includes(inv.id) ? { ...inv, status: action } : inv
-        )
-      );
-    } else if (action === "Delete") {
-      setInvoices((prev) =>
-        prev.filter((inv) => !selectedRows.includes(inv.id))
-      );
-    }
-    // Clear selection and reset
-    setSelectedRows([]);
-    setTableAction("");
-  }, [selectedRows]);
-
-  // Handler to select a builder for invoice
-  const handleSelectBuilder = useCallback((builderId) => {
-    setSelectedBuilderId(builderId);
-  }, []);
-
-  // "Add New" Builder Dialog handlers
-  const handleAddNewClick = useCallback(() => setOpenDialog(true), []);
-  const handleCloseDialog = useCallback(() => {
-    setOpenDialog(false);
-    setNewBuilderName("");
-  }, []);
-  const handleAddBuilder = useCallback(() => {
-    if (!newBuilderName.trim()) return;
-    const newId = builders.length + 1;
-    setBuilders((prev) => [
-      ...prev,
-      { id: newId, name: newBuilderName, image: "https://via.placeholder.com/40" },
-    ]);
-    handleCloseDialog();
-  }, [newBuilderName, builders.length, handleCloseDialog]);
-
-  // Invoice request & PDF generation
-  const handleRequestClick = useCallback(() => {
-    if (disableRequest) return;
-
-    const builder = builders.find((b) => b.id === selectedBuilderId);
-    if (!builder) return;
-
-    const issueDateObj = new Date();
-    const invoiceDateIssued = formatUKDate(issueDateObj);
-    const fileDate = invoiceDateIssued.replace(/\//g, "-"); // "DD-MM-YYYY"
-    const currentInvoiceNo = invoiceNumber;
-    const dueDateObj = new Date(issueDateObj.getTime() + 7 * 24 * 60 * 60 * 1000);
-    const invoiceDueDate = formatUKDate(dueDateObj);
-
-    const doc = new jsPDF("portrait", "pt", "A4");
-    doc.addImage("/EABuildingWorksLTD.png", "PNG", 40, 40, 130, 110);
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(32);
-    doc.setTextColor(125, 155, 118);
-    doc.text("INVOICE", 400, 80);
-
-    doc.setFontSize(11);
-    doc.setTextColor(0, 0, 0);
-    doc.text("EA Building Works LTD", 400, 110);
-    doc.text("78 Clements Road", 400, 125);
-    doc.text("Birmingham", 400, 140);
-    doc.text("B25 8TT", 400, 155);
-
-    doc.setFontSize(12);
-    doc.setFont("helvetica", "bold");
-    doc.text(builder.name, 40, 160);
-    doc.setFont("helvetica", "normal");
-    doc.text(`Date Issued: ${invoiceDateIssued}`, 40, 175);
-    doc.text(`Invoice No: ${currentInvoiceNo}`, 40, 190);
-
-    doc.setFont("helvetica", "bold");
-    doc.setFontSize(14);
-    doc.text("DESCRIPTION", 40, 220);
-    doc.text("SUBTOTAL", 400, 220);
-    doc.line(40, 230, 550, 230);
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(12);
-    doc.text("Commission", 40, 250);
-    doc.text(`£${Number(invoiceAmount).toFixed(2)}`, 400, 250);
-    doc.line(40, 265, 550, 265);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("Amount Due", 280, 290);
-    doc.text(`£${Number(invoiceAmount).toFixed(2)}`, 400, 290);
-
-    doc.setFontSize(10);
-    doc.setFont("helvetica", "normal");
-    doc.setFillColor(245, 245, 245);
-    doc.rect(40, 480, 520, 100, "F");
-    doc.setFont("helvetica", "bold");
-    doc.text("BANK INFO", 60, 500);
-    doc.setFont("helvetica", "normal");
-    doc.text("Revolut Bank", 60, 520);
-    doc.text("Account No: 90070860", 60, 535);
-    doc.text("Sort Code: 04-29-09", 60, 550);
-    doc.text(`Reference: ${invoiceDateIssued}`, 60, 565);
-
-    doc.setFont("helvetica", "bold");
-    doc.text("DUE BY", 450, 500);
-    doc.setFont("helvetica", "normal");
-    doc.text(invoiceDueDate, 450, 520);
-
-    doc.line(40, 800, 550, 800);
-    doc.setFontSize(9);
-    doc.text("07359739224", 60, 825);
-    doc.text("eabuildingworksltd@gmail.com", 380, 825);
-
-    const fileName = `${builder.name} - ${fileDate}.pdf`;
-    doc.save(fileName);
-
-    setInvoiceNumber((prev) => prev + 1);
-    const uniqueSuffix = Math.random().toString(36).slice(2, 10);
-    const uniqueId = `inv-${currentInvoiceNo}-${uniqueSuffix}`;
-    const newInvoice = {
-      id: uniqueId,
-      builderName: builder.name,
-      date: invoiceDateIssued,
-      status: "Pending",
-      amount: Number(invoiceAmount).toFixed(2),
-    };
-    // Add the new invoice to the front of the list
-    setInvoices((prev) => [newInvoice, ...prev]);
-  }, [disableRequest, builders, selectedBuilderId, invoiceNumber, invoiceAmount]);
-
-  // Table checkbox handlers for "select all"
-  const handleSelectAll = useCallback(
-    (e) => {
-      if (e.target.checked) {
-        setSelectedRows(invoices.map((inv) => inv.id));
-      } else {
-        setSelectedRows([]);
+    const fetchLeads = async () => {
+      setLoading(true);
+      try {
+        if (!auth.currentUser) {
+          setError("You must be logged in to view the dashboard");
+          setLoading(false);
+          return;
+        }
+        
+        // Use the optimized function that only returns leads with contract values
+        const fetchedLeads = await getLeadsForDashboard(auth.currentUser.uid, true);
+        setLeads(fetchedLeads);
+      } catch (err) {
+        console.error("Error fetching leads:", err);
+        setError("Failed to fetch leads. Please try again later.");
+      } finally {
+        setLoading(false);
       }
-    },
-    [invoices]
-  );
+    };
+    
+    fetchLeads();
+  }, []);
 
-  // --- Render ---
+  // Filter leads based on time
+  const filteredLeads = useMemo(() => {
+    if (timeFilter === 'all') return leads;
+    
+    const now = new Date();
+    let cutoffDate;
+    
+    if (timeFilter === 'month') {
+      cutoffDate = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+    } else if (timeFilter === 'year') {
+      cutoffDate = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+    }
+    
+    return leads.filter(lead => {
+      const leadDate = lead.timestamp instanceof Date ? lead.timestamp : 
+        typeof lead.timestamp === 'object' && lead.timestamp.seconds ? 
+          new Date(lead.timestamp.seconds * 1000) :
+          new Date(lead.timestamp);
+      
+      return leadDate >= cutoffDate;
+    });
+  }, [leads, timeFilter]);
+  
+  // Calculate builder stats from leads
+  const builderStats = useMemo(() => {
+    const stats = {};
+    
+    filteredLeads.forEach(lead => {
+      const builderName = lead.builder || 'Unknown';
+      
+      if (!stats[builderName]) {
+        stats[builderName] = {
+          name: builderName,
+          contractTotal: 0,
+          profitTotal: 0,
+          commissionTotal: 0,
+          leadCount: 0,
+          completedLeads: 0,
+          pendingLeads: 0,
+          leads: []
+        };
+      }
+      
+      // Extract numeric values from leads
+      const contractAmount = lead.contractAmount ? 
+        parseFloat(lead.contractAmount.replace(/[^0-9.-]+/g, "")) : 0;
+      
+      const profit = lead.profit ? 
+        parseFloat(lead.profit.replace(/[^0-9.-]+/g, "")) : 0;
+      
+      // Calculate commission (10% of profit)
+      const commission = calculateCommission(profit);
+      
+      // Update builder stats
+      stats[builderName].contractTotal += contractAmount;
+      stats[builderName].profitTotal += profit;
+      stats[builderName].commissionTotal += commission;
+      stats[builderName].leadCount++;
+      
+      // Count completed and pending leads
+      if (lead.stage === 'Completed') {
+        stats[builderName].completedLeads++;
+      } else if (lead.stage !== 'Cancelled' && lead.stage !== 'Rejected') {
+        stats[builderName].pendingLeads++;
+      }
+      
+      // Store the lead
+      stats[builderName].leads.push(lead);
+    });
+    
+    // Convert to array and sort by commission (highest first)
+    return Object.values(stats).sort((a, b) => b.commissionTotal - a.commissionTotal);
+  }, [filteredLeads]);
+  
+  // Calculate summary stats
+  const summaryStats = useMemo(() => {
+    return builderStats.reduce((acc, builder) => {
+      acc.totalContract += builder.contractTotal;
+      acc.totalProfit += builder.profitTotal;
+      acc.totalCommission += builder.commissionTotal;
+      acc.totalLeads += builder.leadCount;
+      return acc;
+    }, { 
+      totalContract: 0, 
+      totalProfit: 0, 
+      totalCommission: 0, 
+      totalLeads: 0 
+    });
+  }, [builderStats]);
+  
+  // Prepare chart data
+  const chartData = useMemo(() => ({
+    pie: builderStats.map(builder => ({
+      name: builder.name,
+      value: builder.commissionTotal
+    })),
+    bar: builderStats.map(builder => ({
+      name: builder.name,
+      contract: builder.contractTotal,
+      profit: builder.profitTotal,
+      commission: builder.commissionTotal
+    }))
+  }), [builderStats]);
+  
+  const handleRefresh = async () => {
+    setLoading(true);
+    try {
+      // Use the optimized function for refreshing data
+      const fetchedLeads = await getLeadsForDashboard(auth.currentUser.uid, true);
+      setLeads(fetchedLeads);
+    } catch (err) {
+      setError("Failed to refresh data. Please try again later.");
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+  
+  const handleViewTypeChange = (type) => {
+    setViewType(type);
+  };
+  
+  const handleTimeFilterChange = (event) => {
+    setTimeFilter(event.target.value);
+  };
+  
+  if (loading) {
+    return (
+      <Box className="dashboard-container" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '80vh' }}>
+        <CircularProgress />
+      </Box>
+    );
+  }
+  
+  if (error) {
+    return (
+      <Box className="dashboard-container" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', flexDirection: 'column', minHeight: '80vh' }}>
+        <Typography variant="h6" color="error">{error}</Typography>
+        <Button variant="contained" onClick={handleRefresh} sx={{ mt: 2 }}>
+          Try Again
+        </Button>
+      </Box>
+    );
+  }
+  
   return (
     <Box className="dashboard-container">
+      <Box className="dashboard-header">
       <Typography variant="h4" className="dashboard-title">
-        Dashboard
+          Earnings Dashboard
       </Typography>
+        <Box className="dashboard-actions">
+          <FormControl size="small" sx={{ width: 140, mr: 1 }}>
+            <InputLabel>Time Period</InputLabel>
+            <Select
+              value={timeFilter}
+              label="Time Period"
+              onChange={handleTimeFilterChange}
+            >
+              <MenuItem value="all">All Time</MenuItem>
+              <MenuItem value="month">Last Month</MenuItem>
+              <MenuItem value="year">Last Year</MenuItem>
+            </Select>
+          </FormControl>
+          
+          <Tooltip title="Refresh Data">
+            <IconButton onClick={handleRefresh} className="action-button">
+              <RefreshIcon />
+            </IconButton>
+          </Tooltip>
+          
+          <Tooltip title="Table View">
+            <IconButton 
+              onClick={() => handleViewTypeChange('table')} 
+              className={`action-button ${viewType === 'table' ? 'active' : ''}`}>
+              <ViewListIcon />
+            </IconButton>
+          </Tooltip>
+          
+          <Tooltip title="Pie Chart">
+            <IconButton 
+              onClick={() => handleViewTypeChange('pie')} 
+              className={`action-button ${viewType === 'pie' ? 'active' : ''}`}>
+              <DonutLargeIcon />
+            </IconButton>
+          </Tooltip>
+          
+          <Tooltip title="Bar Chart">
+            <IconButton 
+              onClick={() => handleViewTypeChange('bar')} 
+              className={`action-button ${viewType === 'bar' ? 'active' : ''}`}>
+              <BarChartIcon />
+            </IconButton>
+          </Tooltip>
+        </Box>
+      </Box>
       
-      {/* Row 1: Balances */}
-      <Grid container spacing={2} className="balances-row">
-        <Grid item xs={12} md={6}>
-          <div className="gradient-box">
-            <Typography variant="h5" className="balance-title">
-              Total Balance
+      {/* Summary Cards */}
+      <Grid container spacing={2} className="summary-cards">
+        <Grid item xs={12} sm={6} md={3}>
+          <Card className="summary-card">
+            <CardContent>
+              <Typography variant="subtitle2" color="textSecondary">
+                Total Contract Value
+              </Typography>
+              <Typography variant="h4" className="summary-value">
+                {formatCurrency(summaryStats.totalContract)}
             </Typography>
-            <Typography variant="h3" className="balance-amount">
-              £{doneBalance.toFixed(2)}
+              <Typography variant="caption" color="textSecondary">
+                {summaryStats.totalLeads} Leads
             </Typography>
-          </div>
+            </CardContent>
+          </Card>
         </Grid>
-        <Grid item xs={12} md={6}>
-          <div className="gradient-box">
-            <Typography variant="h5" className="balance-title">
-              Pending Balance
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Card className="summary-card">
+            <CardContent>
+              <Typography variant="subtitle2" color="textSecondary">
+                Total Profit
+              </Typography>
+              <Typography variant="h4" className="summary-value">
+                {formatCurrency(summaryStats.totalProfit)}
             </Typography>
-            <Typography variant="h3" className="balance-amount">
-              £{pendingBalance.toFixed(2)}
+              <Typography variant="caption" color="textSecondary">
+                {Math.round((summaryStats.totalProfit / summaryStats.totalContract) * 100) || 0}% Profit Margin
             </Typography>
-          </div>
+            </CardContent>
+          </Card>
         </Grid>
+        
+        <Grid item xs={12} sm={6} md={3}>
+          <Card className="summary-card">
+            <CardContent>
+              <Typography variant="subtitle2" color="textSecondary">
+                Total Commission
+              </Typography>
+              <Typography variant="h4" className="summary-value commission-value">
+                {formatCurrency(summaryStats.totalCommission)}
+              </Typography>
+              <Typography variant="caption" color="textSecondary">
+                10% of Total Profit
+              </Typography>
+            </CardContent>
+          </Card>
       </Grid>
 
-      {/* Row 2: Transactions */}
-      <Grid container spacing={2}>
-        <Grid item xs={12}>
-          <Card className="transactions-card">
+        <Grid item xs={12} sm={6} md={3}>
+          <Card className="summary-card">
             <CardContent>
-              <Box className="transactions-header">
-                <Typography variant="h6" className="transactions-title">
-                  Payment History
-                </Typography>
-                <FormControl size="small" className="action-dropdown">
-                  <InputLabel>Action</InputLabel>
-                  <Select
-                    value={tableAction}
-                    label="Action"
-                    onChange={handleTableActionChange}
-                  >
-                    <MenuItem value="Pending">Pending</MenuItem>
-                    <MenuItem value="Done">Done</MenuItem>
-                    <MenuItem value="Delete">Delete</MenuItem>
-                  </Select>
-                </FormControl>
-              </Box>
-              <Typography variant="caption" className="transactions-caption">
-                Your invoice history
+              <Typography variant="subtitle2" color="textSecondary">
+                Active Builders
               </Typography>
-              <TableContainer component={Paper} className="transactions-table-container">
-                <Table size="small" stickyHeader>
+              <Typography variant="h4" className="summary-value">
+                {builderStats.length}
+                </Typography>
+              <Typography variant="caption" color="textSecondary">
+                With Recorded Leads
+              </Typography>
+            </CardContent>
+          </Card>
+        </Grid>
+      </Grid>
+      
+      {/* Main Content Area */}
+      <Card className="main-content-card">
+        <CardContent>
+          {viewType === 'table' && (
+            <TableContainer component={Paper} className="builders-table">
+              <Table stickyHeader>
                   <TableHead>
-                    <TableRow className="transactions-table-head">
-                      <TableCell className="table-cell-checkbox">
-                        <Checkbox
-                          className="select-all-checkbox"
-                          indeterminate={
-                            selectedRows.length > 0 && selectedRows.length < invoices.length
-                          }
-                          checked={invoices.length > 0 && selectedRows.length === invoices.length}
-                          onChange={handleSelectAll}
-                          aria-label="Select all invoices"
+                  <TableRow>
+                    <TableCell className="table-header">Builder</TableCell>
+                    <TableCell className="table-header" align="right">Contract Value</TableCell>
+                    <TableCell className="table-header" align="right">Profit</TableCell>
+                    <TableCell className="table-header" align="right">Commission (10%)</TableCell>
+                    <TableCell className="table-header" align="center">Leads</TableCell>
+                    <TableCell className="table-header" align="center">Status</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {builderStats.map((builder) => (
+                    <TableRow key={builder.name} className="builder-row">
+                      <TableCell component="th" scope="row" className="builder-name-cell">
+                        {builder.name}
+                      </TableCell>
+                      <TableCell align="right">{formatCurrency(builder.contractTotal)}</TableCell>
+                      <TableCell align="right">{formatCurrency(builder.profitTotal)}</TableCell>
+                      <TableCell align="right" className="commission-cell">
+                        {formatCurrency(builder.commissionTotal)}
+                      </TableCell>
+                      <TableCell align="center">
+                        <Box className="leads-count">
+                          <Chip 
+                            label={`${builder.leadCount} Total`} 
+                            className="total-leads-chip"
+                            size="small"
+                          />
+                          <Box className="leads-breakdown">
+                            <Chip 
+                              label={`${builder.completedLeads} Completed`} 
+                              className="completed-leads-chip"
+                              size="small"
+                            />
+                            <Chip 
+                              label={`${builder.pendingLeads} Pending`} 
+                              className="pending-leads-chip"
+                              size="small"
+                            />
+                          </Box>
+                        </Box>
+                      </TableCell>
+                      <TableCell align="center">
+                        <Chip 
+                          label={builder.commissionTotal > 0 ? "Paid" : "Pending"} 
+                          color={builder.commissionTotal > 0 ? "success" : "warning"}
+                          variant="outlined"
+                          size="small"
                         />
                       </TableCell>
-                      <TableCell className="table-cell">Builder</TableCell>
-                      <TableCell className="table-cell">Date</TableCell>
-                      <TableCell className="table-cell">Status</TableCell>
-                      <TableCell className="table-cell">Amount</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+          )}
+          
+          {viewType === 'pie' && (
+            <Box className="chart-container">
+              <Typography variant="h6" align="center" gutterBottom>
+                Commission Distribution by Builder
+              </Typography>
+              <ResponsiveContainer width="100%" height={400}>
+                <PieChart>
+                  <Pie
+                    data={chartData.pie}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={true}
+                    label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+                    outerRadius={150}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {chartData.pie.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </Box>
+          )}
+          
+          {viewType === 'bar' && (
+            <Box className="chart-container">
+              <Typography variant="h6" align="center" gutterBottom>
+                Builder Performance Comparison
+              </Typography>
+              <ResponsiveContainer width="100%" height={400}>
+                <BarChart
+                  data={chartData.bar}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 80 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis 
+                    dataKey="name" 
+                    angle={-45} 
+                    textAnchor="end"
+                    height={70} 
+                    interval={0}
+                  />
+                  <YAxis tickFormatter={(value) => `£${value.toLocaleString()}`} />
+                  <RechartsTooltip formatter={(value) => formatCurrency(value)} />
+                  <Legend />
+                  <Bar dataKey="contract" name="Contract Value" fill="#264653" />
+                  <Bar dataKey="profit" name="Profit" fill="#2A9D8F" />
+                  <Bar dataKey="commission" name="Commission" fill="#E9C46A" />
+                </BarChart>
+              </ResponsiveContainer>
+            </Box>
+          )}
+        </CardContent>
+      </Card>
+      
+      {/* Builder Details Section */}
+      <Card className="builder-details-card">
+        <CardContent>
+          <Tabs
+            value={tabValue}
+            onChange={handleTabChange}
+            variant="scrollable"
+            scrollButtons="auto"
+            className="builder-tabs"
+          >
+            {builderStats.map((builder, index) => (
+              <Tab 
+                label={builder.name} 
+                key={builder.name} 
+                className={tabValue === index ? 'active-tab' : ''}
+              />
+            ))}
+          </Tabs>
+          
+          {builderStats.length > 0 && builderStats.map((builder, index) => (
+            <Box 
+              key={builder.name}
+              className="builder-detail-content"
+              style={{ display: tabValue === index ? 'block' : 'none' }}
+            >
+              <Grid container spacing={2} className="builder-summary-cards">
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card className="builder-summary-card">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="textSecondary">
+                        Contract Value
+                      </Typography>
+                      <Typography variant="h5" className="summary-value">
+                        {formatCurrency(builder.contractTotal)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card className="builder-summary-card">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="textSecondary">
+                        Profit
+                      </Typography>
+                      <Typography variant="h5" className="summary-value">
+                        {formatCurrency(builder.profitTotal)}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        {Math.round((builder.profitTotal / builder.contractTotal) * 100) || 0}% Profit Margin
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card className="builder-summary-card">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="textSecondary">
+                        Commission Owed
+                      </Typography>
+                      <Typography variant="h5" className="summary-value commission-value">
+                        {formatCurrency(builder.commissionTotal)}
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <Card className="builder-summary-card">
+                    <CardContent>
+                      <Typography variant="subtitle2" color="textSecondary">
+                        Lead Count
+                      </Typography>
+                      <Typography variant="h5" className="summary-value">
+                        {builder.leadCount}
+                      </Typography>
+                      <Typography variant="caption" color="textSecondary">
+                        {builder.completedLeads} Completed, {builder.pendingLeads} Pending
+                      </Typography>
+                    </CardContent>
+                  </Card>
+                </Grid>
+              </Grid>
+              
+              <Typography variant="h6" className="section-title">
+                Lead Details
+              </Typography>
+              
+              <TableContainer component={Paper} className="leads-table">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell className="table-header">Customer</TableCell>
+                      <TableCell className="table-header">Date</TableCell>
+                      <TableCell className="table-header">Stage</TableCell>
+                      <TableCell className="table-header" align="right">Contract Amount</TableCell>
+                      <TableCell className="table-header" align="right">Profit</TableCell>
+                      <TableCell className="table-header" align="right">Commission</TableCell>
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {invoices.map((inv) => {
-                      const isChecked = selectedRows.includes(inv.id);
+                    {builder.leads.map((lead) => {
+                      const contractAmount = lead.contractAmount ? 
+                        parseFloat(lead.contractAmount.replace(/[^0-9.-]+/g, "")) : 0;
+                      
+                      const profit = lead.profit ? 
+                        parseFloat(lead.profit.replace(/[^0-9.-]+/g, "")) : 0;
+                      
+                      const commission = calculateCommission(profit);
+                      
                       return (
-                        <TableRow key={inv.id} hover className="transaction-row">
-                          <TableCell className="table-cell-checkbox">
-                            <Checkbox
-                              className="row-checkbox"
-                              checked={isChecked}
-                              onChange={(e) =>
-                                handleRowCheckbox(inv.id, e.target.checked)
-                              }
-                              aria-label={`Select invoice ${inv.id}`}
+                        <TableRow key={lead._id} className="lead-row">
+                          <TableCell>
+                            <Typography variant="body2" className="customer-name">
+                              {lead.fullName || lead.customerName || "Unknown"}
+                            </Typography>
+                            <Typography variant="caption" color="textSecondary">
+                              {lead.address || "No address"}
+                            </Typography>
+                          </TableCell>
+                          <TableCell>{formatUKDate(lead.timestamp)}</TableCell>
+                          <TableCell>
+                            <Chip 
+                              label={lead.stage || "New Lead"} 
+                              className={`stage-chip stage-${(lead.stage || "New Lead").toLowerCase().replace(/\s+/g, '-')}`}
+                              size="small"
                             />
                           </TableCell>
-                          <TableCell className="table-cell">{inv.builderName}</TableCell>
-                          <TableCell className="table-cell">{inv.date}</TableCell>
-                          <TableCell className={`table-cell status-${inv.status.toLowerCase()}`}>
-                            {inv.status}
-                          </TableCell>
-                          <TableCell className="table-cell">
-                            +£{Number(inv.amount).toFixed(2)}
-                          </TableCell>
+                          <TableCell align="right">{formatCurrency(contractAmount)}</TableCell>
+                          <TableCell align="right">{formatCurrency(profit)}</TableCell>
+                          <TableCell align="right" className="commission-cell">{formatCurrency(commission)}</TableCell>
                         </TableRow>
                       );
                     })}
                   </TableBody>
                 </Table>
               </TableContainer>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-
-      {/* Row 3: UK Builders and Top Builders */}
-      <Grid container spacing={2}>
-        {/* UK Builders Section */}
-        <Grid item xs={12} md={6}>
-          <Card className="uk-builders-card">
-            <CardContent>
-              <Box className="section-header">
-                <Typography variant="h6" className="section-title">
-                  UK Builders
-                </Typography>
-              </Box>
-              <Box className="uk-builders-add-new">
-                <Box className="add-new-builder" onClick={handleAddNewClick} role="button" tabIndex={0}>
-                  <Box className="add-new-icon" aria-hidden="true">+</Box>
-                  <Typography variant="caption" className="add-new-text">
-                    Add new
-                  </Typography>
-                </Box>
-                <Box
-                  ref={scrollRef}
-                  className={`builders-scroller ${isDown ? "active-scroll" : ""}`}
-                  onMouseDown={handleMouseDown}
-                  onMouseLeave={handleMouseLeave}
-                  onMouseUp={handleMouseUp}
-                  onMouseMove={handleMouseMove}
-                  role="region"
-                  aria-label="UK Builders scroller"
-                >
-                  {builders.map((b) => (
-                    <Box
-                      key={b.id}
-                      onClick={() => handleSelectBuilder(b.id)}
-                      className={`builder-item ${selectedBuilderId === b.id ? "selected-builder" : ""}`}
-                      role="button"
-                      tabIndex={0}
-                      aria-label={`Select builder ${b.name}`}
-                    >
-                      <Avatar alt={b.name} src={b.image} className="builder-avatar" />
-                      <Typography variant="caption" className="builder-name">
-                        {b.name}
-                      </Typography>
                     </Box>
                   ))}
-                </Box>
-              </Box>
-              <Box className="uk-builders-actions">
-                <Box className="amount-input-container">
-                  <Typography variant="caption" className="amount-label">
-                    Amount (£)
-                  </Typography>
-                  <TextField
-                    type="number"
-                    step="0.01"
-                    size="small"
-                    value={invoiceAmount}
-                    onChange={(e) => setInvoiceAmount(e.target.value)}
-                    className="amount-input"
-                    inputProps={{ "aria-label": "Invoice Amount" }}
-                  />
-                </Box>
-                <Button
-                  variant="contained"
-                  disabled={disableRequest}
-                  onClick={handleRequestClick}
-                  className={`request-button ${disableRequest ? "disabled-button" : ""}`}
-                  aria-label="Request Invoice"
-                >
-                  Request
-                </Button>
-              </Box>
-            </CardContent>
-          </Card>
-        </Grid>
-
-        {/* Top Builders Section */}
-        <Grid item xs={12} md={6}>
-          <Card className="top-builders-card">
-            <CardContent>
-              <Box className="section-header">
-                <Typography variant="h6" className="section-title">
-                  Top Builders
+          
+          {builderStats.length === 0 && (
+            <Box className="no-data-message">
+              <Typography variant="h6">No builder data available</Typography>
+              <Typography variant="body2">
+                There are no leads with contract values or profits recorded.
                 </Typography>
               </Box>
-              <Box className="top-builders-list">
-                {topBuilders.map((builder) => (
-                  <Box key={builder.id} className="top-builder-item">
-                    <Avatar alt={builder.name} src={builder.image} className="top-builder-avatar" />
-                    <Typography variant="body2" className="top-builder-name">
-                      {builder.name}
-                    </Typography>
-                    <Typography variant="caption" className="top-builder-amount">
-                      £{builder.totalPaid.toFixed(2)}
-                    </Typography>
-                  </Box>
-                ))}
-              </Box>
+          )}
             </CardContent>
           </Card>
-        </Grid>
-      </Grid>
-
-      {/* Add New Builder Dialog */}
-      <Dialog
-        open={openDialog}
-        onClose={handleCloseDialog}
-        maxWidth="xs"
-        fullWidth
-        className="add-builder-dialog"
-        aria-labelledby="add-builder-dialog-title"
-      >
-        <DialogTitle id="add-builder-dialog-title" className="dialog-title">
-          <Box component="img" src="/EABuildingWorksLTD.png" alt="Logo" className="dialog-logo" />
-          <Typography variant="h6" className="dialog-subtitle">
-            Please add builder details below
-          </Typography>
-        </DialogTitle>
-        <DialogContent className="dialog-content">
-          <TextField
-            label="Builder Name"
-            fullWidth
-            value={newBuilderName}
-            onChange={(e) => setNewBuilderName(e.target.value)}
-            className="builder-name-input"
-            inputProps={{ "aria-label": "New Builder Name" }}
-          />
-        </DialogContent>
-        <DialogActions className="dialog-actions">
-          <Button onClick={handleCloseDialog} variant="outlined" className="cancel-button" aria-label="Cancel adding builder">
-            Cancel
-          </Button>
-          <Button onClick={handleAddBuilder} variant="contained" className="add-button" aria-label="Add builder">
-            Add
-          </Button>
-        </DialogActions>
-      </Dialog>
     </Box>
   );
 }
