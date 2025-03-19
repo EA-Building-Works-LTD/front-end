@@ -1,4 +1,4 @@
-// src/LeadDetailMobile.js
+import { toast } from 'react-toastify';
 import React, { useState, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
@@ -18,7 +18,6 @@ import {
   CircularProgress,
 } from "@mui/material";
 import { useTheme } from "@mui/material/styles";
-import { toast } from 'react-toastify';
 
 // Icons
 import ArrowBackIcon from "@mui/icons-material/ArrowBack";
@@ -60,7 +59,7 @@ import { formatWithCommas } from "../../utils/dateUtils";
 import { v4 as uuidv4 } from "uuid";
 import useFirebaseState from "../../hooks/useFirebaseState";
 import { auth } from "../../firebase/config";
-import { updateLead, getLeadById, addLeadProposal } from "../../firebase/leads";
+import { updateLead, getLeadById, addLeadProposal, updateLeadStage } from "../../firebase/leads";
 
 // Components (same functionality as desktop)
 import NotesSection from './NotesSection';
@@ -652,8 +651,22 @@ export default function LeadDetailMobile() {
   };
   const handleCloseStageModal = () => setOpenStageModal(false);
   const handleSaveStage = (stage) => {
-    updateLeadData({ stage });
-    setOpenStageModal(false);
+    // First update the lead stage directly in Firebase
+    updateLeadStage(lead._id, stage, true).then(() => {
+      // Then update the local state
+      updateLeadData({ stage });
+      setOpenStageModal(false);
+      
+      // Show success notification
+      toast.success(`Lead stage updated to "${stage}"`, {
+        position: "bottom-center",
+        autoClose: 2000
+      });
+    }).catch(err => {
+      console.error("Error updating lead stage:", err);
+      toast.error("Failed to update lead stage");
+      setOpenStageModal(false);
+    });
   };
 
   // Proposal

@@ -29,11 +29,9 @@ import DashboardIcon from "@mui/icons-material/Dashboard";
 import PeopleIcon from "@mui/icons-material/People";
 import NoteAltIcon from "@mui/icons-material/NoteAlt";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import DescriptionIcon from "@mui/icons-material/Description";
 import LogoutIcon from "@mui/icons-material/Logout";
 import CalendarTodayIcon from "@mui/icons-material/CalendarToday";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import StorageIcon from "@mui/icons-material/Storage";
 import BuildIcon from "@mui/icons-material/Build";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import { ToastContainer } from 'react-toastify';
@@ -56,7 +54,6 @@ import Dashboard from "./components/Dashboard";
 import LeadDetailMobile from "./components/Leads/LeadDetailMobile";
 import AppointmentsPage from "./components/Appointments/AppointmentsPage";
 import ProposalsPage from "./components/ProposalsPage";
-import DataMigration from "./components/Admin/DataMigration";
 import AdminTools from "./components/Admin/AdminTools";
 import BuilderManagement from "./components/Admin/BuilderManagement";
 
@@ -234,6 +231,14 @@ function App() {
   // Check if a menu item is active
   const isActive = (path) => {
     return location.pathname.includes(path);
+  };
+
+  // Helper function to prevent navigation to the current page
+  const handleMenuItemClick = (event, path) => {
+    if (location.pathname === path) {
+      event.preventDefault();
+    }
+    toggleDrawer();
   };
 
   // Handle migration
@@ -435,7 +440,7 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/dashboard") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/dashboard")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <DashboardIcon />
@@ -450,7 +455,7 @@ function App() {
                             ? "active"
                             : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/leads")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <PeopleIcon />
@@ -482,7 +487,7 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/admin-tools") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/admin-tools")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <AdminPanelSettingsIcon />
@@ -495,25 +500,12 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/builder-management") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/builder-management")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <BuildIcon />
                         </ListItemIcon>
                         <BoldListItemText primary="Builder Management" />
-                      </ListItemButton>
-                      <ListItemButton
-                        component={Link}
-                        to="/data-migration"
-                        className={`sidebar-listitem ${
-                          isActive("/data-migration") ? "active" : ""
-                        }`}
-                        onClick={toggleDrawer}
-                      >
-                        <ListItemIcon className="sidebar-listicon">
-                          <StorageIcon />
-                        </ListItemIcon>
-                        <BoldListItemText primary="Data Migration" />
                       </ListItemButton>
 
                       <Divider
@@ -540,7 +532,7 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/my-leads") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/my-leads")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <NoteAltIcon />
@@ -554,7 +546,7 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/appointments") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/appointments")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <CalendarMonthIcon />
@@ -587,7 +579,7 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/calendar") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/calendar")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <CalendarTodayIcon />
@@ -620,7 +612,7 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/my-leads") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/my-leads")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <NoteAltIcon />
@@ -634,7 +626,7 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/appointments") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/appointments")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <CalendarMonthIcon />
@@ -667,7 +659,7 @@ function App() {
                         className={`sidebar-listitem ${
                           isActive("/calendar") ? "active" : ""
                         }`}
-                        onClick={toggleDrawer}
+                        onClick={(e) => handleMenuItemClick(e, "/calendar")}
                       >
                         <ListItemIcon className="sidebar-listicon">
                           <CalendarTodayIcon />
@@ -723,10 +715,6 @@ function App() {
                         />
                         <Route path="/proposals" element={<ProposalsPage />} />
                         <Route path="/calendar" element={<CalendarView />} />
-                        <Route
-                          path="/data-migration"
-                          element={<DataMigration />}
-                        />
                         <Route path="/admin-tools" element={<AdminTools />} />
                         <Route
                           path="/builder-management"

@@ -25,8 +25,6 @@ import useLocalStorageState from "../hooks/useLocalStorageState";
 import './Leads/LeadDetailMobile.css';
 import { auth } from "../firebase/config";
 import { useUserRole } from "../components/Auth/UserRoleContext";
-import { updateLead } from "../firebase/leads";
-import { toast } from 'react-toastify';
 
 export default function ProposalsPage({ onCreateProposal }) {
   const [allLeadData, setAllLeadData] = useLocalStorageState("myLeadData", {});
@@ -96,15 +94,12 @@ export default function ProposalsPage({ onCreateProposal }) {
     setProposalMenuTarget(null);
   };
 
-  const handleProposalStatusChange = async (newStatus) => {
+  const handleProposalStatusChange = (newStatus) => {
     if (!proposalMenuTarget || !proposalMenuTarget.leadId) return;
-    
-    try {
-      // Update the specific proposal inside its lead's data
-      const leadId = proposalMenuTarget.leadId;
-      const leadData = allLeadData[leadId];
-      
-      if (!leadData) return;
+    // Update the specific proposal inside its lead's data.
+    setAllLeadData((prev) => {
+      const leadData = prev[proposalMenuTarget.leadId];
+      if (!leadData) return prev;
       
       const updatedProposals = leadData.proposals.map((p) => {
         if (p.id === proposalMenuTarget.id) {
@@ -116,43 +111,31 @@ export default function ProposalsPage({ onCreateProposal }) {
             dateAccepted = null; // Set to null if pending
           }
           
+          // Add activity log entry
+          const activities = leadData.activities || [];
+          const statusActivity = {
+            id: Date.now(),
+            timestamp: Date.now(),
+            title: "Proposal Status Updated",
+            subtext: `Proposal #${p.proposalNumber} changed status from ${p.status} to ${newStatus}`,
+          };
+          
+          activities.push(statusActivity);
+          
           return { ...p, status: newStatus, dateAccepted };
         }
         return p;
       });
       
-      // Create activity log entry
-      const statusActivity = {
-        id: Date.now(),
-        timestamp: Date.now(),
-        title: "Proposal Status Updated",
-        subtext: `Proposal #${proposalMenuTarget.proposalNumber} changed status from ${proposalMenuTarget.status} to ${newStatus}`,
-      };
-      
-      const updatedActivities = [...(leadData.activities || []), statusActivity];
-      
-      // Update local state first for immediate UI feedback
-      setAllLeadData((prev) => ({
+      return {
         ...prev,
-        [leadId]: {
+        [proposalMenuTarget.leadId]: {
           ...leadData,
           proposals: updatedProposals,
-          activities: updatedActivities,
+          activities: leadData.activities || [],
         },
-      }));
-      
-      // Update in Firebase
-      await updateLead(leadId, {
-        proposals: updatedProposals,
-        activities: updatedActivities
-      });
-      
-      toast.success(`Proposal status updated to ${newStatus}`);
-    } catch (error) {
-      console.error("Error updating proposal status:", error);
-      toast.error("Failed to update proposal status. Please try again.");
-    }
-    
+      };
+    });
     handleProposalMenuClose();
   };
 
@@ -160,21 +143,20 @@ export default function ProposalsPage({ onCreateProposal }) {
     setOpenDeleteDialog(true);
   };
 
-  const handleDeleteProposal = async () => {
+  const handleDeleteProposal = () => {
     if (!proposalMenuTarget || !proposalMenuTarget.leadId) return;
     
-    try {
-      const leadId = proposalMenuTarget.leadId;
-      const leadData = allLeadData[leadId];
-      
-      if (!leadData) return;
+    setAllLeadData((prev) => {
+      const leadData = prev[proposalMenuTarget.leadId];
+      if (!leadData) return prev;
       
       // Filter out the proposal with the given ID
       const updatedProposals = leadData.proposals.filter(
         (p) => p.id !== proposalMenuTarget.id
       );
       
-      // Add activity log entry
+      // Add activity log entry if you want to track deletions
+      const activities = leadData.activities || [];
       const deleteActivity = {
         id: Date.now(),
         timestamp: Date.now(),
@@ -182,29 +164,15 @@ export default function ProposalsPage({ onCreateProposal }) {
         subtext: `Proposal #${proposalMenuTarget.proposalNumber} was deleted.`,
       };
       
-      const updatedActivities = [...(leadData.activities || []), deleteActivity];
-      
-      // Update local state first for immediate UI feedback
-      setAllLeadData((prev) => ({
+      return {
         ...prev,
-        [leadId]: {
+        [proposalMenuTarget.leadId]: {
           ...leadData,
           proposals: updatedProposals,
-          activities: updatedActivities,
+          activities: [...activities, deleteActivity],
         },
-      }));
-      
-      // Update in Firebase
-      await updateLead(leadId, {
-        proposals: updatedProposals,
-        activities: updatedActivities
-      });
-      
-      toast.success("Proposal deleted successfully");
-    } catch (error) {
-      console.error("Error deleting proposal:", error);
-      toast.error("Failed to delete proposal. Please try again.");
-    }
+      };
+    });
     
     setOpenDeleteDialog(false);
     handleProposalMenuClose();

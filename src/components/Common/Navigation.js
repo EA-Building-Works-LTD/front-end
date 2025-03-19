@@ -23,7 +23,6 @@ import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
 import DescriptionIcon from "@mui/icons-material/Description";
 import LogoutIcon from "@mui/icons-material/Logout";
 import ChevronLeftIcon from "@mui/icons-material/ChevronLeft";
-import StorageIcon from "@mui/icons-material/Storage";
 import BuildIcon from "@mui/icons-material/Build";
 import AdminPanelSettingsIcon from "@mui/icons-material/AdminPanelSettings";
 import BoldListItemText from "./BoldListItemText";
@@ -48,7 +47,6 @@ const Navigation = ({ user, onLogout, username }) => {
       "/appointments": "Appointments",
       "/proposals": "Proposals",
       "/calendar": "Calendar",
-      "/data-migration": "Data Migration",
       "/admin-tools": "Admin Tools",
       "/builder-management": "Builder Management",
       "/login": "Login",
@@ -210,18 +208,6 @@ const Navigation = ({ user, onLogout, username }) => {
           {user && user.role === "admin" && (
             <>
               <Divider sx={{ my: 1 }} />
-              <ListItemButton
-                component={Link}
-                to="/data-migration"
-                selected={isActive("/data-migration")}
-                onClick={() => !isDesktop && setDrawerOpen(false)}
-              >
-                <ListItemIcon>
-                  <StorageIcon />
-                </ListItemIcon>
-                <BoldListItemText primary="Data Migration" />
-              </ListItemButton>
-
               <ListItemButton
                 component={Link}
                 to="/admin-tools"

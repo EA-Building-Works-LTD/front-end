@@ -53,7 +53,8 @@ import { useUserRole } from "../Auth/UserRoleContext";
 import axios from "axios";
 import "./MyLeads.css";
 import { 
-  fetchAndSyncNewLeads
+  fetchAndSyncNewLeads, 
+  fetchGoogleSheetLeads 
 } from "../../firebase/googleFormIntegration";
 
 // Helper functions for localStorage
@@ -214,7 +215,7 @@ const MyLeads = () => {
         setLeads(updatedLeads);
       }
     }
-  }, [myLeadData, leads]); // Added leads to dependency array
+  }, [myLeadData]); // Removed leads from dependency to avoid circular updates
 
   // Function to fetch Google leads - extracted for reuse
   const fetchGoogleLeads = useCallback(async () => {
@@ -502,34 +503,6 @@ const MyLeads = () => {
     }
   }, [userRole, fetchGoogleLeads, fetchLeads]);
 
-  // Function to sync Google Form submissions
-  const syncLeads = useCallback(async (force = false) => {
-    setSyncingForms(true);
-    setSyncMessage("Syncing leads from Google Sheets...");
-    
-    try {
-      // Call the updated fetchAndSyncNewLeads function with the force parameter
-      const result = await fetchAndSyncNewLeads(force);
-      
-      if (result.success) {
-        setSyncMessage(`${result.message}`);
-        // Refresh leads after sync
-        fetchLeads();
-      } else {
-        setSyncMessage(`Sync failed: ${result.message}`);
-      }
-    } catch (error) {
-      console.error("Error syncing leads:", error);
-      setSyncMessage(`Error syncing: ${error.message}`);
-    } finally {
-      setSyncingForms(false);
-      // Show sync message for 5 seconds
-      setTimeout(() => {
-        setSyncMessage("");
-      }, 5000);
-    }
-  }, [fetchLeads, setSyncingForms, setSyncMessage]);
-
   // Update the useEffect hook that handles auto-sync
   useEffect(() => {
     // Check if auto-sync is enabled in localStorage
@@ -557,7 +530,7 @@ const MyLeads = () => {
         clearInterval(syncInterval);
       }
     };
-  }, [autoSyncEnabled, userRole, syncLeads, fetchLeads]);
+  }, [autoSyncEnabled, userRole]);
 
   // Toggle auto-sync
   const toggleAutoSync = () => {
@@ -992,15 +965,43 @@ const MyLeads = () => {
     toggleStageExpansion(stage);
   };
 
+  // Function to sync Google Form submissions
+  const syncLeads = async (force = false) => {
+    setSyncingForms(true);
+    setSyncMessage("Syncing leads from Google Sheets...");
+    
+    try {
+      // Call the updated fetchAndSyncNewLeads function with the force parameter
+      const result = await fetchAndSyncNewLeads(force);
+      
+      if (result.success) {
+        setSyncMessage(`${result.message}`);
+        // Refresh leads after sync
+        fetchLeads();
+      } else {
+        setSyncMessage(`Sync failed: ${result.message}`);
+      }
+    } catch (error) {
+      console.error("Error syncing leads:", error);
+      setSyncMessage(`Error syncing: ${error.message}`);
+    } finally {
+      setSyncingForms(false);
+      // Show sync message for 5 seconds
+      setTimeout(() => {
+        setSyncMessage("");
+      }, 5000);
+    }
+  };
+
   // Update the resetSync function to force a full sync
-  const resetSync = useCallback(() => {
+  const resetSync = () => {
     // Clear the last sync timestamp and row ID
     localStorage.removeItem("lastGoogleFormSyncTimestamp");
     localStorage.removeItem("lastProcessedGoogleFormRowId");
     
     // Force a full sync
     syncLeads(true);
-  }, [syncLeads]);
+  };
 
   // Render desktop table view.
   const renderDesktopTable = () => (
@@ -1405,10 +1406,8 @@ const MyLeads = () => {
       isMounted.current = false;
       
       // Cleanup auto-sync interval
-      // Capture the current interval ID to avoid issues with stale refs
-      const intervalId = autoSyncIntervalRef.current;
-      if (intervalId) {
-        clearInterval(intervalId);
+      if (autoSyncIntervalRef.current) {
+        clearInterval(autoSyncIntervalRef.current);
       }
     };
   }, [fetchLeads]);

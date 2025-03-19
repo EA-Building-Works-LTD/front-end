@@ -394,10 +394,9 @@ export const addLeadAppointment = async (leadId, appointment) => {
  * Add a proposal to a lead
  * @param {string} leadId - The ID of the lead
  * @param {Object} proposal - Proposal object
- * @param {Object} activity - Activity log entry for the proposal creation
  * @returns {Promise<void>}
  */
-export const addLeadProposal = async (leadId, proposal, activity = null) => {
+export const addLeadProposal = async (leadId, proposal) => {
   try {
     const docRef = doc(db, LEADS_COLLECTION, leadId);
     const docSnap = await getDoc(docRef);
@@ -405,16 +404,9 @@ export const addLeadProposal = async (leadId, proposal, activity = null) => {
     if (docSnap.exists()) {
       const leadData = docSnap.data();
       const proposals = leadData.proposals || [];
-      const activities = leadData.activities || [];
-      
-      // If an activity was provided, add it to the activities array
-      const updatedActivities = activity 
-        ? [...activities, activity] 
-        : activities;
       
       await updateDoc(docRef, {
-        proposals: [...proposals, proposal],
-        activities: updatedActivities
+        proposals: [...proposals, proposal]
       });
     } else {
       throw new Error("Lead not found");

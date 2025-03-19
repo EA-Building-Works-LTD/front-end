@@ -1,5 +1,6 @@
 // src/components/Leads/LeadDetailDrawer.js
 import React, { useState, useEffect } from "react";
+import { toast } from 'react-toastify';
 import {
   Drawer,
   Box,
@@ -29,11 +30,8 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import AddIcon from "@mui/icons-material/Add";
 import CalendarMonthIcon from "@mui/icons-material/CalendarMonth";
-import MoreHorizIcon from "@mui/icons-material/MoreHoriz";
 import EmailIcon from "@mui/icons-material/Email";
 import PhoneIcon from "@mui/icons-material/Phone";
-import LanguageIcon from "@mui/icons-material/Language";
-import MenuIcon from "@mui/icons-material/Menu";
 import DoubleArrowIcon from "@mui/icons-material/DoubleArrow";
 import AttachMoneyIcon from "@mui/icons-material/AttachMoney";
 import CircleIcon from "@mui/icons-material/Circle";
@@ -46,7 +44,6 @@ import HistoryIcon from "@mui/icons-material/History";
 import ImageIcon from "@mui/icons-material/Image";
 import BusinessIcon from "@mui/icons-material/Business";
 import EditIcon from "@mui/icons-material/Edit";
-import { toast } from 'react-toastify';
 
 import {
   formatTimestamp,
@@ -57,7 +54,7 @@ import {
 import { v4 as uuidv4 } from "uuid";
 import useFirebaseState from "../../hooks/useFirebaseState";
 import { auth } from "../../firebase/config";
-import { updateLead, updateLeadStage, addLeadActivity, addLeadAppointment, addLeadProposal } from "../../firebase/leads";
+import { updateLead, updateLeadStage, addLeadProposal } from "../../firebase/leads";
 import ContractModal from '../Modals/ContractModal';
 import AppointmentModal from '../Appointments/AppointmentModal';
 import StageModal from '../Modals/StageModal';
@@ -67,23 +64,9 @@ import ProjectMediaTab from "./ProjectMediaTab";
 
 import "./LeadDetailDrawer.css";
 
-/** 
- * List of possible stages. Extracted for clarity/maintainability.
- * Make sure these match all references throughout the code.
- */
-const STAGES = [
-  "New Lead",
-  "Quote Sent",
-  "In Progress",
-  "Completed",
-  "Cancelled",
-  "No Answer",
-];
-
 export default function LeadDetailDrawer({ open, onClose, lead }) {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-  const isTablet = useMediaQuery(theme.breakpoints.down('md'));
   
   const [allLeadData, setAllLeadData, leadDataLoading] = useFirebaseState(
     "leadData",
@@ -373,8 +356,31 @@ export default function LeadDetailDrawer({ open, onClose, lead }) {
     setOpenStageModal(true);
   };
   const handleSaveStage = (stage) => {
-    updateLeadData({ stage });
-    setOpenStageModal(false);
+    // First update the lead stage directly in Firebase
+    updateLeadStage(lead._id, stage, true).then(() => {
+      // Then update the local state
+      updateLeadData({ stage });
+      setOpenStageModal(false);
+      
+      // Force refresh the parent component by updating the lead in the global state
+      // Explicitly update the leads array to force a re-render of the parent table
+      if (typeof window !== 'undefined') {
+        const event = new CustomEvent('leadStageUpdated', { 
+          detail: { leadId: lead._id, newStage: stage } 
+        });
+        window.dispatchEvent(event);
+      }
+      
+      // Show success notification
+      toast.success(`Lead stage updated to "${stage}"`, {
+        position: "bottom-right",
+        autoClose: 2000
+      });
+    }).catch(err => {
+      console.error("Error updating lead stage:", err);
+      toast.error("Failed to update lead stage");
+      setOpenStageModal(false);
+    });
   };
 
   // Proposal Modal
